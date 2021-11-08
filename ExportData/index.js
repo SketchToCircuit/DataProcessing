@@ -1,10 +1,31 @@
 require('dotenv').config();
 const env = process.env;
 const mysql = require('mysql');
+const path = require('path');
+const fs = require('fs');
 
 var database;
 
+createFolder();
 dbInit();
+
+
+function createFolder()
+{
+    if(!fs.existsSync(env.DATAFOLDER))
+    {
+        fs.mkdirSync(env.DATAFOLDER);
+    }
+    let data = fs.readdirSync(env.GETFOLDER);
+    for(var i in data)
+    {
+        let dir = path.join(env.DATAFOLDER, data[i], "/");
+        if(!fs.existsSync(dir))
+        {
+            fs.mkdirSync(dir);
+        }
+    }
+}
 
 function dbInit()
 {
@@ -33,17 +54,38 @@ function getData()
         if (err) {
             console.error(err);
         } else if (result.length >= 1) {
-            console.log(result);
+            for(var i in result)
+            {
+                readData(result[i]);
+            }
+            finish();
         }
     });
 }
 
-function readData()
+function readData(data)
 {
+    let par = data.component_path.split('/');
+    let dest_component = path.join(env.DATAFOLDER, par[3], par[4]);
+    let loc_component = path.join(env.GETFOLDER, par[3], par[4]);
 
+    par = data.label_path.split('/');
+    let dest_label = path.join(env.DATAFOLDER, par[3], par[4]);
+    let loc_label = path.join(env.GETFOLDER, par[3], par[4]);
+
+    writeData(dest_component, loc_component, dest_label, loc_label)
 }
 
-function writeData()
+function writeData(dest_component, loc_component, dest_label, loc_label)
 {
+    if(fs.existsSync(dest_component)) fs.unlinkSync(dest_component);
+    if(fs.existsSync(dest_label)) fs.unlinkSync(dest_label);
+    fs.copyFileSync(loc_component, dest_component);
+    fs.copyFileSync(loc_label, dest_label);
+}
 
+function finish()
+{
+    console.log("done");
+    database.end();
 }
