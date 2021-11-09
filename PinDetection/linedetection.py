@@ -9,6 +9,9 @@ def get_lines(img, threshold = 50, minLineLength = 50, maxLineGap = 30, maxDiffA
     lines = cv2.HoughLinesP(img, rho=1, theta=np.pi/180, threshold=threshold,
                             minLineLength=minLineLength, maxLineGap=maxLineGap)
 
+    if lines is None or len(lines) <= 0:
+        return []
+
     # l[0] - line; l[1] - angle
     for line in _get_coords(lines):
         leftx, boty, rightx, topy = line
