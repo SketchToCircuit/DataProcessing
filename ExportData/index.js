@@ -49,7 +49,7 @@ function dbInit()
 
 function getData()
 {
-    let query = "SELECT component_path , label_path FROM images WHERE looked_at >= 3 AND validated/looked_at > 0.49 LIMIT 0,1000000;"
+    let query = "SELECT component_path , label_path FROM images WHERE looked_at >= 3 AND validated/looked_at > 0.51 LIMIT 0,1000000;"
     database.query(query, (err, result) => {
         if (err) {
             console.error(err);
