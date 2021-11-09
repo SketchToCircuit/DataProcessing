@@ -1,0 +1,2 @@
+envrionment updated: "conda env update -n S2C --file ./environment.yml" im äußersten Ordner (bzw. mit ../envrionment.yml, wenn in Unterordner)
+environment export: bitte zuerst importen, und dann conda env export --no-builds > environment.yml im äußersten Ordner (bzw. mit ../envrionment.yml, wenn in Unterordner)
