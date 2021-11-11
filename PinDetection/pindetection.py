@@ -6,7 +6,7 @@ from match_pins import *
 from typing import List
 import math
 
-img = cv2.imread('./PinDetection/testdata/SPK_3.png', cv2.IMREAD_UNCHANGED)
+img = cv2.imread('./PinDetection/testdata/empty_0.png', cv2.IMREAD_UNCHANGED)
 img = imgman.make_binary(img, 100)
 img = imgman.filter(img)
 
