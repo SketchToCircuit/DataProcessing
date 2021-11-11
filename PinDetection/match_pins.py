@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Dict, List
 from dataclasses import dataclass
 
 # information of one pin
@@ -29,7 +29,7 @@ class IPinDetection(ABC):
     
     @staticmethod
     @abstractmethod
-    def get_pins(lines: np.ndarray, img: np.ndarray) -> List[Pin]:
+    def get_pins(lines: np.ndarray, img: np.ndarray) -> Dict[str, Pin]:
         raise NotImplementedError
 
 class TwoPinsHor(IPinDetection):
@@ -54,7 +54,7 @@ class TwoPinsHor(IPinDetection):
         left_point[0] = left_point[0] + img.shape[1] / 30
         right_point[0] = right_point[0] - img.shape[1] / 30
         
-        return [Pin('1', left_point, [-1, 0]), Pin('2', right_point, [1, 0])]
+        return {'1': Pin('1', left_point, np.array([-1, 0])), '2': Pin('2', right_point, np.array([1, 0]))}
 
 class TwoPinsVert(IPinDetection):
     _COMP_TYPES = ['R_V', 'C_V', 'L_V',
@@ -70,7 +70,7 @@ class TwoPinsVert(IPinDetection):
 
         pins = TwoPinsHor.get_pins(rot_lines, rot_img)
 
-        for pin in pins:
+        for pin in pins.values():
             pin.position = (pin.position * [1, -1])[::-1]
             pin.direction = (pin.direction * [1, -1])[::-1]
 
@@ -93,7 +93,7 @@ class OnePinLeft(IPinDetection):
 
         left_point[0] = left_point[0] + img.shape[1] / 30
         
-        return [Pin('1', left_point, [-1, 0])]
+        return {'1': Pin('1', left_point, np.array([-1, 0]))}
 
 class OnePinTop(IPinDetection):
     _COMP_TYPES = ['GND', 'GND_F', 'GND_C']
@@ -106,12 +106,12 @@ class OnePinTop(IPinDetection):
         rot_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
         rot_lines = lines[:, :, ::-1] * [1, -1]
 
-        pins = OnePinLeft.get_pins(rot_lines, rot_img)
+        pin = [*OnePinLeft.get_pins(rot_lines, rot_img).values()][0]
 
-        pins[0].position = (pins[0].position * [1, -1])[::-1]
-        pins[0].direction = [0, -1]
+        pin.position = (pin.position * [1, -1])[::-1]
+        pin.direction = [0, -1]
 
-        return pins
+        return {'1': pin}
 
 class TwoPinsLeft(IPinDetection):
     _COMP_TYPES = ['SPK', 'MIC']
@@ -149,6 +149,46 @@ class TwoPinsLeft(IPinDetection):
         left_1[0] = left_1[0] + img.shape[1] / 30
         left_2[0] = left_2[0] + img.shape[1] / 30
 
-        return [Pin('1', left_1, [-1, 0]), Pin('2', left_2, [-1, 0])]     
+        return {'1': Pin('1', left_1, np.array([-1, 0])), '2': Pin('2', left_2, np.array([-1, 0]))}
 
-ALL_DETECTORS: List[IPinDetection] = [TwoPinsHor, TwoPinsVert, OnePinLeft, OnePinTop, TwoPinsLeft]
+class TwoLOneRHor(IPinDetection):
+    _COMP_TYPES = ['OPV']
+
+    NAME = 'TwoLeftOneRight'
+    
+    @staticmethod
+    def get_pins(lines: np.ndarray, img: np.ndarray):
+        # flip img by reversing array
+        img_flip = img[:, ::-1]
+        # flipped lines: image size - coordinate
+        lines_flip = img.shape[::-1] - lines
+        
+        inputs = [*TwoPinsLeft.get_pins(lines, img).values()]
+        out = [*OnePinLeft.get_pins(lines_flip, img_flip).values()][0]
+
+        # flip right pin back and rename
+        out.position = img.shape[::-1] - out.position
+        out.direction = [1, 0]
+        out.name = 'out'
+
+        # first input is higher -> negative
+        if inputs[0].position[1] < inputs[1].position[1]:
+            inputs[0].name = '-'
+            inputs[1].name = '+'
+
+            return {'+': inputs[1], '-': inputs[0], 'out': out}
+        else:
+            inputs[0].name = '+'
+            inputs[1].name = '-'
+            return {'+': inputs[0], '-': inputs[1], 'out': out}
+
+class TwoROneLHor(IPinDetection):
+    _COMP_TYPES = ['S3']
+
+    NAME = 'TwoRightOneLeft'
+    
+    @staticmethod
+    def get_pins(lines: np.ndarray, img: np.ndarray):
+        raise NotImplementedError
+
+ALL_DETECTORS: List[IPinDetection] = [TwoPinsHor, TwoPinsVert, OnePinLeft, OnePinTop, TwoPinsLeft, TwoLOneRHor, TwoROneLHor]
