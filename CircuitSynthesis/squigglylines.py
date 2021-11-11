@@ -26,7 +26,7 @@ class Lines:
         dy = (y2 - y1)
         step = 0.1
         squiglines = []
-        rndmborders = 7
+        rndmborders = 10
          
         ##create control points
         for i in range(num_points):
@@ -67,18 +67,31 @@ class Lines:
         cv2.polylines(picture, line, False, (0, 0, 0), thickness)
 
     def linecrossing(self, x1, y1, x2, y2, picture, thickness):
-        maxwidth = 50
-        maxheight = 30
-        distance = math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
+        totdistance = math.sqrt((x2-x1)**2 + (y2-y1)**2)
+        rndmlen = random.randint(math.floor(totdistance * 0.25), math.floor(totdistance * 0.75))
+        breakpoint = (
+        (x2 - x1) / totdistance * rndmlen,
+        (y2 - y1) / totdistance * rndmlen  
+        )
+        #should have some overlap and perpendiculasr offset
+        overlapdist = random.randint(5, 20)
+        perpoffset = random.randint(3, 7)
 
-        return
+        firstx2 = 10
+        firsty2 = 10
+
+        secx1 = 10
+        secy1 = 10
+
+        self.squigglyline(x1, y1, firstx2, firsty2, picture, thickness)
+        self.squigglyline(secx1, secy1, x2, y2, picture, thickness) 
+
         
 
 def main():
-    print("Hello World!")
     test = Lines()
     image = np.ones((512, 512,3), np.uint8) * 255
-    test.squigglyline(0,0,512,512, image, 3)
+    test.linecrossing(0,0,512,512, image, 3)
 
     cv2.imshow('image', image)
     cv2.waitKey(0)
