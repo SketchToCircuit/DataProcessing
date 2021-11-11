@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 def make_binary(img, threshold = 127):
     if isinstance(img[0][0], np.ndarray):
@@ -12,6 +13,7 @@ def make_binary(img, threshold = 127):
 
     return img
 
+# part should be white on black
 def get_boundary(img):
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -37,3 +39,22 @@ def get_boundary(img):
         min_y = max_y = 0
 
     return min_x, max_x, min_y, max_y
+
+# part should be white on black
+def filter(img: np.ndarray):
+    orig_img = img
+    base_size = math.ceil(min(img.shape[0], img.shape[1]) / 40.0)
+
+    img = cv2.blur(img, (base_size * 2 + 1, base_size * 2 + 1))
+    _, img = cv2.threshold(img, 0, 355, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
+    kernel = np.ones((base_size * 10 + 1, base_size * 10 + 1), np.uint8)
+    img = cv2.dilate(img, kernel, 1)
+
+    contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnt = max(contours, key=cv2.contourArea)
+
+    mask = np.zeros_like(orig_img)
+    cv2.drawContours(mask, [cnt], 0, 255, cv2.FILLED)
+
+    return cv2.bitwise_and(orig_img, mask)
