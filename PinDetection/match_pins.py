@@ -42,9 +42,9 @@ class TwoPinsHor(IPinDetection):
     @staticmethod
     def get_pins(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
         # calculate dx and dy
-        deltas = np.diff(lines, axis=-2).squeeze()
+        deltas = np.diff(lines, axis=-2).squeeze(axis=-2)
         # create mask to remove elements where dy > dx
-        mask = (np.diff(np.abs(deltas)) < 0).squeeze()
+        mask = (np.diff(np.abs(deltas)) < 0).squeeze(axis=-1)
         lines = lines[mask, :, :]
 
         # get points with minimum and maximum of: x - abs(y - cy) or x + abs(y - cy) to take lines near to vertical center
@@ -67,7 +67,7 @@ class TwoPinsVert(IPinDetection):
     def get_pins(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
         # rotate and then use other class
         rot_lines = lines[:, :, ::-1] * [1, -1]
-        rot_centroid = centroid * [1, -1]
+        rot_centroid = centroid[::-1] * [1, -1]
 
         pins = TwoPinsHor.get_pins(rot_lines, rot_centroid, img_size[::-1])
 
@@ -84,8 +84,8 @@ class OnePinLeft(IPinDetection):
     @staticmethod
     def get_pins(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
         # filter vertical lines with dx and dy
-        deltas = np.diff(lines, axis=-2).squeeze()
-        mask = (np.diff(np.abs(deltas)) < 0).squeeze()
+        deltas = np.diff(lines, axis=-2).squeeze(axis=-2)
+        mask = (np.diff(np.abs(deltas)) < 0).squeeze(axis=-1)
         lines = lines[mask, :, :]
 
         # get point with minimum of: x + abs(y - cy) to take lines near to vertical center
@@ -104,7 +104,7 @@ class OnePinTop(IPinDetection):
     def get_pins(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
         # rotate and use other class
         rot_lines = lines[:, :, ::-1] * [1, -1]
-        rot_centroid = centroid * [1, -1]
+        rot_centroid = centroid[::-1] * [1, -1]
 
         pin = OnePinLeft.get_pins(rot_lines, rot_centroid, img_size[::-1])['1']
 
@@ -120,11 +120,9 @@ class TwoPinsLeft(IPinDetection):
     @staticmethod
     def get_pins(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
         # filter vertical lines
-        deltas = np.diff(lines, axis=-2).squeeze()
-        mask = (np.diff(np.abs(deltas)) < 0).squeeze()
+        deltas = np.diff(lines, axis=-2).squeeze(axis=-2)
+        mask = (np.diff(np.abs(deltas)) < 0).squeeze(axis=-1)
         lines = lines[mask, :, :]
-
-        # TODO
 
         # get first point (farthest to the left) with x + abs(y -cy) as metric
         values = lines[:, :, 0] + np.abs(lines[:, :, 1] - centroid[1])
@@ -229,7 +227,7 @@ class Potentiometer(IPinDetection):
         pins = TwoPinsHor.get_pins(lines, centroid, img_size)
 
         # find diagonal lines
-        deltas = np.abs(np.diff(lines, axis=-2).squeeze())
+        deltas = np.abs(np.diff(lines, axis=-2).squeeze(axis=-2))
         # create mask for elements where atan2(dy, dx) in [10°; 80°]
         angles = np.arctan2(deltas[:, 1], deltas[:, 0])
         mask = np.abs(angles * 180 / math.pi - 45) < 35
@@ -282,8 +280,7 @@ class _Transistor:
         left = OnePinLeft.get_pins(lines, centroid, img_size)['1']
 
         # filter horizontale lines
-        deltas = np.abs(np.diff(lines, axis=-2).squeeze())
-        # TODO
+        deltas = np.abs(np.diff(lines, axis=-2).squeeze(axis=-2))
         # create mask for elements where atan2(dy, dx) in [20°; 90°]
         angles = np.arctan2(deltas[:, 1], deltas[:, 0])
         mask = np.abs(angles * 180 / math.pi - 55) < 35

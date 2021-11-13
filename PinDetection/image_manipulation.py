@@ -68,14 +68,10 @@ def get_boundary(img):
 # part should be white on black
 def filter(img: np.ndarray):
     orig_img = img
-    base_size = math.ceil(min(img.shape[0], img.shape[1]) / 40.0)
-
-    # blur and threshold to filter small points
-    img = cv2.blur(img, (base_size * 2 + 1, base_size * 2 + 1))
-    _, img = cv2.threshold(img, 0, 355, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    base_size = math.ceil(min(img.shape[0], img.shape[1]) / 30.0)
 
     # dilate to fill gaps
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (base_size * 6 + 1, base_size * 6 + 1))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (base_size * 8 + 1, base_size * 8 + 1))
     img = cv2.dilate(img, kernel, 1)
 
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -84,8 +80,6 @@ def filter(img: np.ndarray):
         return None
 
     cnt = max(contours, key=cv2.contourArea)
+    x,y,w,h = cv2.boundingRect(cnt)
 
-    mask = np.zeros_like(orig_img)
-    cv2.drawContours(mask, [cnt], 0, 255, cv2.FILLED)
-
-    return cv2.bitwise_and(orig_img, mask)
+    return orig_img[y:y+h, x:x+w]
