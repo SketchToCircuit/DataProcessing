@@ -77,11 +77,11 @@ class Lines:
         overlap = random.randint(0,20)
         perpdist = random.randint(-5,5)
 
-        newx2 = int(breakpoint[0] * ((rndmbpointlen + overlap) / rndmbpointlen))
-        newy2 = int(breakpoint[1] * ((rndmbpointlen + perpdist)  / rndmbpointlen))
+        newx2 = breakpoint[0]
+        newy2 = breakpoint[1] 
 
-        newx1 = int(breakpoint[0] * ((abs(distance - rndmbpointlen) + overlap)  / rndmbpointlen))
-        newy1 = int(breakpoint[1] * ((abs(distance - rndmbpointlen) - perpdist)  / rndmbpointlen))
+        newx1 = breakpoint[0] 
+        newy1 = breakpoint[1] 
         print("red...........")
         print(newx1)
         print(newy1)
@@ -92,20 +92,19 @@ class Lines:
         print(y1)
         print(newx2)
         print(newy2)
-
+        
         self.squigglyline(x1, y1, newx2, newy2, picture, thickness, (0, 255, 0))#green
         self.squigglyline(newx1, newy1, x2, y2, picture, thickness, (0, 0, 255))#red
+        breakpoint = np.array(breakpoint)
+        breakpoint = np.int32(breakpoint)
+        cv2.circle(picture, breakpoint, 8, (255, 0, 0), -1)
+        cv2.circle(picture, np.array(np.int32([newx2, newy2])), 5, (255, 0, 255), -1)
         
 
 def main():
     test = Lines()
-<<<<<<< HEAD
     image = np.ones((512, 512, 3), np.uint8) * 255
     test.linecrossing(10, 400, 400, 10, image, 3, (0, 0, 0))
-=======
-    image = np.ones((512, 512,3), np.uint8) * 255
-    test.linecrossing(0,0,512,512, image, 3)
->>>>>>> e39479503e122af96a7da506252a6ed640cb4908
 
     cv2.imshow('image', image)
     cv2.waitKey(0)
