@@ -10,7 +10,7 @@ def get_lines(img, threshold = 50, minLineLength = 50, maxLineGap = 30, maxDiffA
                             minLineLength=minLineLength, maxLineGap=maxLineGap)
 
     if lines is None or len(lines) <= 0:
-        return []
+        return [], 0
 
     # l[0] - line; l[1] - angle
     for line in _get_coords(lines):
@@ -45,7 +45,7 @@ def get_lines(img, threshold = 50, minLineLength = 50, maxLineGap = 30, maxDiffA
     merged_lines_all.extend(merged_lines_x)
     merged_lines_all.extend(merged_lines_y)
 
-    return merged_lines_all
+    return np.array(merged_lines_all) 
 
 def _merge_lines_pipeline_2(lines, maxDiffAngle, maxDiffDistance):
     super_lines_final = []

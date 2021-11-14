@@ -26,7 +26,7 @@ class Lines:
         dy = (y2 - y1)
         step = 0.1
         squiglines = []
-        rndmborders = 7
+        rndmborders = 10
          
         ##create control points
         for i in range(num_points):
@@ -98,10 +98,14 @@ class Lines:
         
 
 def main():
-    print("Hello World!")
     test = Lines()
+<<<<<<< HEAD
     image = np.ones((512, 512, 3), np.uint8) * 255
     test.linecrossing(10, 400, 400, 10, image, 3, (0, 0, 0))
+=======
+    image = np.ones((512, 512,3), np.uint8) * 255
+    test.linecrossing(0,0,512,512, image, 3)
+>>>>>>> e39479503e122af96a7da506252a6ed640cb4908
 
     cv2.imshow('image', image)
     cv2.waitKey(0)
