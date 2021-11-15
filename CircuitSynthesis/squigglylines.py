@@ -20,7 +20,7 @@ class Lines:
     def squigglyline(self, x1, y1, x2, y2, picture, thickness, color):
         distance = math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
         pointdistance = 80
-        num_points = math.floor(distance / pointdistance) + 1
+        num_points = math.ceil(distance / pointdistance) + 1
         helpingpoints = []
         dx = (x2 - x1)
         dy = (y2 - y1)
@@ -35,6 +35,8 @@ class Lines:
             x1 + dx / distance * i * pointdistance - dy / distance * rndmlen,
             y1 + dy / distance * i * pointdistance + dx / distance * rndmlen))
 
+        helpingpoints[0] = (x1, y1)
+        helpingpoints[-1] = (x2, y2)
         controlpoints = np.array(helpingpoints)
         controlpoints = np.int32(controlpoints)
 
@@ -65,40 +67,38 @@ class Lines:
         line = np.int32([line])
      
         cv2.polylines(picture, line, False, color, thickness)
+        #for i in range(len(controlpoints)):
+         #   cv2.circle(picture, np.array(np.int32(controlpoints[i])), 5, (255, 0, 255), -1)
+
+        #cv2.circle(picture, np.array(np.int32([x1, y1])), 3, (0, 255, 255), -1)
+        #cv2.circle(picture, np.array(np.int32([x2, y2])), 3, (0, 255, 255), -1)
 
     def linecrossing(self, x1, y1, x2, y2, picture, thickness, color):
         distance = math.sqrt((x2-x1)**2 + (y2-y1)**2)
         rndmbpointlen = random.randint(int(distance * 0.25),int(distance * 0.75))
         breakpoint = (
-            abs(x2-x1) / distance * rndmbpointlen,
-            abs(y2 - y1) / distance * rndmbpointlen
+            (x2 - x1) / distance * rndmbpointlen + x1,
+            (y2 - y1) / distance * rndmbpointlen + y1
         )
-        #lines need some overlap and some perpendicular distance
-        overlap = random.randint(0,20)
-        perpdist = random.randint(-5,5)
+        #lines need some overlap 
+        overlap = random.randint(0,100)
 
-        newx2 = breakpoint[0]
-        newy2 = breakpoint[1] 
+        newx2 = (x2 - x1) / distance * rndmbpointlen * 1.2 + x1
+        newy2 = (y2 - y1) / distance * rndmbpointlen * 1.2 + y1
 
-        newx1 = breakpoint[0] 
-        newy1 = breakpoint[1] 
-        print("red...........")
-        print(newx1)
-        print(newy1)
-        print(x2)
-        print(y2)
-        print("green......")
-        print(x1)
-        print(y1)
+        newx1 = (x2 - x1) / distance * rndmbpointlen * 0.9 + x1 
+        newy1 = (y2 - y1) / distance * rndmbpointlen * 0.9 + y1
         print(newx2)
         print(newy2)
+        print(breakpoint[0])
+        print(breakpoint[1])
         
-        self.squigglyline(x1, y1, newx2, newy2, picture, thickness, (0, 255, 0))#green
-        self.squigglyline(newx1, newy1, x2, y2, picture, thickness, (0, 0, 255))#red
+        self.squigglyline(x1, y1, newx2, newy2, picture, thickness, (0, 0, 0))#green
+        self.squigglyline(newx1, newy1, x2, y2, picture, thickness, (0, 0, 0))#red
         breakpoint = np.array(breakpoint)
         breakpoint = np.int32(breakpoint)
-        cv2.circle(picture, breakpoint, 8, (255, 0, 0), -1)
-        cv2.circle(picture, np.array(np.int32([newx2, newy2])), 5, (255, 0, 255), -1)
+        #cv2.circle(picture, np.array(np.int32([newx2, newy2])), 5, (255, 0, 255), -1)
+        #cv2.circle(picture, breakpoint, 8, (255, 0, 0), -1)
         
 
 def main():
