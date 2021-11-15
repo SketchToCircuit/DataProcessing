@@ -37,8 +37,8 @@ def test_files():
                 cv2.destroyAllWindows()
 
 def main():
-    #test_files()
-    #exit()
+    test_files()
+    exit()
     #print(str(timeit.timeit(stmt="detect_pins('./PinDetection/testdata/MIC_1.png', 'MIC')", setup="from __main__ import detect_pins", number=10) / 10 * 1000) + 'ms / detection')
     #exit()
 

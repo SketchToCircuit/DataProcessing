@@ -36,8 +36,8 @@ def get_boundary(img):
         m = cv2.moments(cnt)
         a = cv2.contourArea(cnt)
 
-        cum_cx += m['m10']/m['m00'] * a
-        cum_cy += m['m01']/m['m00'] * a
+        cum_cx += m['m10']
+        cum_cy += m['m01']
         cum_area += a
 
         if x < min_x:
