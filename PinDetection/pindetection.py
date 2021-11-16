@@ -29,7 +29,10 @@ class Component:
     pins: Dict[str, Pin]
     '''All pins in a dictionary where the key is the name of the pin.'''
 
-    __rotated: bool = False
+    type: str
+    '''String identifier of component type'''
+
+    _rotated: bool = False
 
     def rotate(self, angle):
         '''
@@ -37,10 +40,10 @@ class Component:
         This can only be done once per component, because otherwise the image would get bigger and bigger due to padding after rotation.
         Label does not get rotated.
         '''
-        if self.__rotated:
+        if self._rotated:
             raise RuntimeError("Component can only get rotated once! This is due to some reasons.")
         
-        self.__rotated = True
+        self._rotated = True
 
         orig_size = np.array(self.component_img.shape[::-1])
         self.component_img = ndimage.rotate(self.component_img, angle, cval=255)
@@ -144,8 +147,7 @@ def _test_files():
                 cv2.destroyAllWindows()
 
 def _main():
-    export_all('../Data/data_9_11/saved', '')
-    exit()
+    #export_all('../Data/data_9_11/saved', '')
     #_test_files()
     #exit()
     #print(str(timeit.timeit(stmt="detect_pins('./PinDetection/testdata/MIC_1.png', 'MIC')", setup="from __main__ import detect_pins", number=10) / 10 * 1000) + 'ms / detection')
@@ -229,11 +231,15 @@ def export_all(src_path, dest_path):
 
                         label_off = np.array([-positioning['bounds'][0] * positioning['sf'] + lbl_minx, -positioning['bounds'][2] * positioning['sf'] + lbl_miny])
 
-                        cmp = Component(component_img, label_img, label_off, pins)
-                        #cmp.rotate(45)
-                        cmp.flip(vert=True, hor=True)
-                        cmp.rotate(-180)
-                        # TODO: export
+                        cmp = Component(component_img, label_img, label_off, pins, type)
+                        
+                        if type in ['R_H', 'C_H', 'L_H']:
+                            cmp.type = cmp.type[0]
+                        elif type in ['R_V', 'C_V', 'L_V']:
+                            cmp.rotate(90 if random.random() > 0.5 else -90)
+                            cmp._rotated = False    # only allowed because it was a 90° rotation -> no padding
+                            cmp.type = cmp.type[0]
+
                 except Exception:
                     component_img = None
                     print(traceback.format_exc())
