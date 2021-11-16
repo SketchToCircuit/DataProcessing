@@ -1,16 +1,32 @@
-import cv2
-import numpy as np
 import math
 from abc import ABC, abstractmethod
-from typing import Dict, List
 from dataclasses import dataclass
+from typing import Dict, List
+
+import cv2
+import numpy as np
 
 # information of one pin
 @dataclass
 class Pin:
     name: str
+    '''Name of the pin (eg. "gate", "1", "out", ...)'''
     position: np.ndarray
+    '''Position of the pin as 1D numpy array with size 2: [x, y]'''
     direction: np.ndarray
+    '''Direction of the pin as 1D numpy array with size 2: [x_dir, y_dir]'''
+
+    def to_dict(self):
+        '''Generate a dict object to export as JSON.'''
+        return {'name': self.name, 'position': self.position.tolist(), 'direction': self.direction.tolist()}
+    
+    @staticmethod
+    def from_dict(map):
+        '''Generate a class instance from a dict object.'''
+        try:
+            return Pin(map['name'], np.array(map['position']), np.array(map['direction']))
+        except Exception:
+            return Pin('0', np.zeros(2), np.zeros(2))
 
 # interface for pin detector
 class IPinDetection(ABC):
@@ -209,7 +225,7 @@ class Potentiometer(IPinDetection):
     @staticmethod
     def _get_pin_diagonal_bottom(lines: np.ndarray, centroid: np.ndarray, angles: np.ndarray, img_size: np.ndarray):
         # create mask for elements where angle in [10°; 90°]
-        mask = np.abs(angles * 180 / math.pi - 50) < 40
+        mask = np.abs(angles * 180 / math.pi - 50) < 41
         lines = lines[mask, :, :]
 
         # get point with maximum of: y - abs(x - cx) to take lines near to horizontale center
@@ -230,7 +246,7 @@ class Potentiometer(IPinDetection):
         deltas = np.abs(np.diff(lines, axis=-2).squeeze(axis=-2))
         # create mask for elements where atan2(dy, dx) in [10°; 80°]
         angles = np.arctan2(deltas[:, 1], deltas[:, 0])
-        mask = np.abs(angles * 180 / math.pi - 45) < 35
+        mask = np.abs(angles * 180 / math.pi - 45) < 36
         diagonal_lines = lines[mask, :, :]
         
         # find lines where one point is above and one is below the center
@@ -283,16 +299,16 @@ class _Transistor:
         deltas = np.abs(np.diff(lines, axis=-2).squeeze(axis=-2))
         # create mask for elements where atan2(dy, dx) in [20°; 90°]
         angles = np.arctan2(deltas[:, 1], deltas[:, 0])
-        mask = np.abs(angles * 180 / math.pi - 55) < 35
+        mask = np.abs(angles * 180 / math.pi - 55) < 36
         lines = lines[mask, :, :]
 
         # move centroid to the right to center for the right pins
-        centroid[0] += img_size[1] / 3
+        centroid[0] += img_size[1] / 4
 
         # get point with minimum of: y + abs(x - cx) to take lines near to horizontale center
         values = lines[:, :, 1] + np.abs(lines[:, :, 0] - centroid[0])
         top_point = lines[np.unravel_index(np.argmin(values), values.shape[0:2])]
-        # get point with maximum of: y + abs(x - cx) to take lines near to horizontale center
+        # get point with maximum of: y - abs(x - cx) to take lines near to horizontale center
         values = lines[:, :, 1] - np.abs(lines[:, :, 0] - centroid[0])
         bottom_point = lines[np.unravel_index(np.argmax(values), values.shape[0:2])]
 

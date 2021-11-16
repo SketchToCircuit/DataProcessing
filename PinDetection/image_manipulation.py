@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import math
 
-def make_binary(img, threshold = 127):
+def unify_color(img):
     if isinstance(img[0][0], np.ndarray):
         if (len(img[0][0]) == 4):
             # not transparent
@@ -12,7 +12,11 @@ def make_binary(img, threshold = 127):
                 img = 255 - img[:, :, 3]
         else:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    return img
 
+def make_binary(img, threshold = 127):
+    img = unify_color(img)
     _, img = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY_INV)
 
     return img
@@ -56,13 +60,13 @@ def get_boundary(img):
     max_y = min(max_y + 10, img.shape[0] - 1)
 
     if min_x > max_x:
-        min_x = max_x = 0
+        return None
     if min_y > max_y:
-        min_y = max_y = 0
+        return None
 
     cum_cx = cum_cx / cum_area - min_x
     cum_cy = cum_cy / cum_area - min_y
-    
+
     return min_x, max_x, min_y, max_y, np.array([cum_cx, cum_cy], dtype=int)
 
 # part should be white on black
@@ -77,9 +81,9 @@ def filter(img: np.ndarray):
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if len(contours) == 0:
-        return None
+        return None, (0, 0, 0, 0)
 
     cnt = max(contours, key=cv2.contourArea)
     x,y,w,h = cv2.boundingRect(cnt)
 
-    return orig_img[y:y+h, x:x+w]
+    return orig_img[y:y+h, x:x+w], (y, y+h, x, x+w)
