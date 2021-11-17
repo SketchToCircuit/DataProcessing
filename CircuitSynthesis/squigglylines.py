@@ -99,7 +99,6 @@ class Lines:
         breakpoint = np.int32(breakpoint)
         #cv2.circle(picture, np.array(np.int32([newx2, newy2])), 5, (255, 0, 255), -1)
         #cv2.circle(picture, breakpoint, 8, (255, 0, 0), -1)
-        
 
 def main():
     test = Lines()
