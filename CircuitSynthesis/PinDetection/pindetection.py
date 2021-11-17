@@ -1,7 +1,6 @@
 import math
 import os
 import random
-import timeit
 import traceback
 from dataclasses import dataclass
 import json
@@ -9,7 +8,6 @@ import json
 import cv2
 import numpy as np
 from scipy import ndimage
-from scipy.ndimage.measurements import label
 
 import PinDetection.image_manipulation as imgman
 import PinDetection.linedetection as ld
