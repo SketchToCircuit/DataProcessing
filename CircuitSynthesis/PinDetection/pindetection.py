@@ -11,9 +11,14 @@ import numpy as np
 from scipy import ndimage
 from scipy.ndimage.measurements import label
 
-import PinDetection.image_manipulation as imgman
-import PinDetection.linedetection as ld
-from .match_pins import *
+if __name__ == '__main__':
+    import image_manipulation as imgman
+    import linedetection as ld
+    from match_pins import *
+else:
+    import PinDetection.image_manipulation as imgman
+    import PinDetection.linedetection as ld
+    from .match_pins import *
 
 @dataclass
 class Component:
