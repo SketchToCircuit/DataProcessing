@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Tuple, List
-from CircuitSynthesis.PinDetection.pindetection import Component
+from PinDetection.pindetection import Component
 import PinDetection.pindetection as pd
 from squigglylines import * 
 
@@ -18,9 +18,6 @@ class CirCmp:
         self.type_id = type_id
         self.cmp = cmp
         self.pos = pos
-
-
-
 
 def bridgecircuit(componentsize):
     pass
