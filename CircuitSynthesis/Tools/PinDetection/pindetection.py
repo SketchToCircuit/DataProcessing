@@ -10,12 +10,12 @@ import numpy as np
 from scipy import ndimage
 
 if __name__ == '__main__':
-    import image_manipulation as imgman
-    import linedetection as ld
+    from image_manipulation import *
+    from linedetection import *
     from match_pins import *
 else:
-    import PinDetection.image_manipulation as imgman
-    import PinDetection.linedetection as ld
+    from .image_manipulation import *
+    from .linedetection import * 
     from .match_pins import *
 
 @dataclass
@@ -173,21 +173,21 @@ def _rotate_point(point, angle):
 
 def _detect_pins(path, type):
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-    orig_img = imgman.unify_color(img.copy())
+    orig_img = unify_color(img.copy())
 
     if img is None:
         print('Read empty image!')
         return None, None, None, None
 
-    img = imgman.make_binary(img, 100)
-    img, cropp = imgman.filter(img)
+    img = make_binary(img, 100)
+    img, cropp = filter(img)
     orig_img = orig_img[cropp[0]:cropp[1], cropp[2]:cropp[3]]
 
     if img is None:
         print('Filtered empty image!')
         return None, None, None, None
 
-    result = imgman.get_boundary(img)
+    result = get_boundary(img)
 
     if result is None:
         print('No boundary!')
@@ -203,11 +203,7 @@ def _detect_pins(path, type):
         img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA)
         orig_img = cv2.resize(orig_img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
 
-    kernel_size = math.ceil(min(img.shape[0], img.shape[1]) / 40.0) * 2 + 1
-    kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, borderType=cv2.BORDER_CONSTANT, borderValue=0)
-
-    lines = ld.get_lines(img, 13, 10, 2, 17, 12)
+    lines = get_lines(img, 13, 10, 2, 17, 12)
 
     for detector in ALL_DETECTORS:
         if detector.match(type):
@@ -241,10 +237,10 @@ def export_all(src_path, dest_path):
 
                     if component_img is not None:
                         label_img = cv2.imread(os.path.join(folder + '_label', os.path.split(file)[1]), cv2.IMREAD_UNCHANGED)
-                        label_img = imgman.unify_color(label_img)
+                        label_img = unify_color(label_img)
                         label_img = cv2.resize(label_img, None, fx=positioning['sf'], fy=positioning['sf'], interpolation=cv2.INTER_AREA)
                         
-                        lbl_minx, lbl_maxx, lbl_miny, lbl_maxy, _ = imgman.get_boundary(255 - label_img)
+                        lbl_minx, lbl_maxx, lbl_miny, lbl_maxy, _ = get_boundary(255 - label_img)
                         label_img = label_img[lbl_miny:lbl_maxy, lbl_minx:lbl_maxx]
 
                         label_off = np.array([-positioning['bounds'][0] * positioning['sf'] + lbl_minx, -positioning['bounds'][2] * positioning['sf'] + lbl_miny])
@@ -296,7 +292,7 @@ def export_all(src_path, dest_path):
                     'pins': {pin_name: pin.to_dict() for (pin_name, pin) in cmp.pins.items()}
                 })
 
-    with open(os.path.join(dest_path, 'data.json'), 'x') as f:
+    with open(os.path.join(dest_path, 'data.json'), 'w') as f:
         json.dump(all_json, f)
 
 if __name__ == '__main__':

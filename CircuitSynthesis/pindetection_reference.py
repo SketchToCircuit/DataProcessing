@@ -1,4 +1,4 @@
-import PinDetection.pindetection as pd
+import Tools.PinDetection.pindetection as pd
 import random
 
 components = pd.import_components('./exported_data/data.json')

@@ -8,13 +8,15 @@ class Lines:
     @staticmethod
     def beziercurve( points: list, step):
         pts=[]
+        t = 0.0
 
-        for i in range(math.floor(1/step)):
-            t = i * step
+        while t <= 1.0:
             pts.append(
                 ##np.array vonverts points List into np-array 
                 np.around((1-t)*(1-t)*(1-t)*np.array(points[0]) + 3*t*(1-t)*(1-t)*np.array(points[1]) + 3*t*t*(1-t)*np.array(points[2]) + t*t*t*np.array(points[3]))
             )
+
+            t += step
 
         return pts
 
@@ -26,7 +28,7 @@ class Lines:
         helpingpoints = []
         dx = (x2 - x1)
         dy = (y2 - y1)
-        step = 0.1
+        step = 0.25
         squiglines = []
         rndmborders = 10
          
@@ -43,7 +45,6 @@ class Lines:
         helpingpoints[-1] = (x2, y2)
         controlpoints = np.array(helpingpoints)
         controlpoints = np.int32(controlpoints)
-
 
         ##create handle points 
         for i in range(num_points):
@@ -62,7 +63,6 @@ class Lines:
             ))
 
             handledistance = math.sqrt((controlpoints[i][0] - helpingpoints[j][0]) **2  + (controlpoints[i][1] - helpingpoints[j][1]) ** 2)
-            print(handledistance)
             rndmlen = random.randint(-rndmborders,rndmborders)
             while rndmlen == 0:
                 rndmlen = random.randint(-rndmborders,rndmborders)
@@ -72,7 +72,7 @@ class Lines:
             controlpoints[i][1] + math.ceil((controlpoints[i][1] - helpingpoints[j][1]) / handledistance * rndmlen) 
             ))
 
-        helpingpoints = helpingpoints[1: -1]
+        helpingpoints = helpingpoints[1:-1]
         handles = np.array(helpingpoints)
         handles = np.int32(handles)
 
@@ -81,7 +81,7 @@ class Lines:
         
         line = np.array(squiglines)
         line = np.int32([line])
-     
+
         cv2.polylines(picture, line, False, color, thickness)
        
     @staticmethod
@@ -89,28 +89,11 @@ class Lines:
         distance = math.sqrt((x2-x1)**2 + (y2-y1)**2)
         rndmbpointlen = random.randint(int(distance * 0.25),int(distance * 0.75))
         breakpoint = (
-            (x2 - x1) / distance * rndmbpointlen + x1,
-            (y2 - y1) / distance * rndmbpointlen + y1
-        )
-        #lines need some overlap 
-        overlap = random.randint(0,100)
-
-        newx2 = (x2 - x1) / distance * rndmbpointlen * 1.2 + x1
-        newy2 = (y2 - y1) / distance * rndmbpointlen * 1.2 + y1
-
-        newx1 = (x2 - x1) / distance * rndmbpointlen * 0.9 + x1 
-        newy1 = (y2 - y1) / distance * rndmbpointlen * 0.9 + y1
-        print(newx2)
-        print(newy2)
-        print(breakpoint[0])
-        print(breakpoint[1])
+        (x2 - x1) / distance * rndmbpointlen + x1,
+        (y2 - y1) / distance * rndmbpointlen + y1)
         
-        self.squigglyline(x1, y1, newx2, newy2, picture, thickness, (0, 0, 0))#green
-        self.squigglyline(newx1, newy1, x2, y2, picture, thickness, (0, 0, 0))#red
-        breakpoint = np.array(breakpoint)
-        breakpoint = np.int32(breakpoint)
-        #cv2.circle(picture, np.array(np.int32([newx2, newy2])), 5, (255, 0, 255), -1)
-        #cv2.circle(picture, breakpoint, 8, (255, 0, 0), -1)
+        #lines need some randomly defined overlap
+        overlap =random.randint(105,130) / 100
 
         newx2 = int((x2 - x1) / distance * rndmbpointlen * overlap + x1)
         newy2 = int((y2 - y1) / distance * rndmbpointlen * overlap + y1)
@@ -124,4 +107,3 @@ class Lines:
         Lines.squigglyline(newx1, newy1, breakpoint[0], breakpoint[1], picture, thickness, (0, 0, 0))
         Lines.squigglyline(breakpoint[0], breakpoint[1], x2, y2, picture, thickness, (0, 0, 0))#red
         #cv2.circle(picture, np.array(np.int32([(x2 - x1) / distance * rndmbpointlen + x1, (y2 - y1) / distance * rndmbpointlen + y1])), 5, (255, 0, 255), -1)
-        

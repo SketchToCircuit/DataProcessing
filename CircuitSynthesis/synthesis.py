@@ -1,22 +1,11 @@
 from dataclasses import dataclass
 from typing import Tuple, List
-from PinDetection.pindetection import Component
-import PinDetection.pindetection as pd
-from squigglylines import * 
-from render import *
+import Tools.PinDetection.pindetection as pd
+from Tools.squigglylines import * 
+from Tools.autoroute import *
 
 import random
 import numpy as np
-
-class CirCmp:
-    type_id: str
-    cmp: Component
-    pos: np.ndarray
-
-    def __init__(self, type_id, cmp, pos):
-        self.type_id = type_id
-        self.cmp = cmp
-        self.pos = pos
 
 def bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     cmps = []
@@ -54,16 +43,9 @@ def bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     compList.append(CirCmp(cmps[2].type(), cmps[2], (pos[0] + np.max(cmps[0].component_img[1], cmps[1].component_img[1]), pos[1] + cmps[0].component_img.shape[0])))
     compList.append(CirCmp(cmps[3].type(), cmps[3], (pos[0] + np.max(cmps[0].component_img[1], cmps[1].component_img[1]), pos[1])))
 
-    compList.append(CirCmp("knot", None, (
-        ,
-    ))
+    compList.append(CirCmp("knot", None, None))
     #compute knots
 
-
-    
-
-
-    
 def starcircuit(compList: List[Tuple], conList: List[Tuple]):
     pass
 def deltacircuit(compList: List[Tuple], conList: List[Tuple]):
@@ -112,11 +94,6 @@ def main():
 
         newEntry = CirCmp(components.type(), cmp, pos)
         compList.append(newEntry)
-
-
-    
-    
-    
 
 if __name__ == '__main__':
     main()
