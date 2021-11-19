@@ -102,6 +102,13 @@ dist
 # TernJS port file
 .tern-port
 
+# from data export
 Data/
 
+# VS-Code
 .vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
