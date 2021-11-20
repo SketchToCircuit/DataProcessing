@@ -23,6 +23,7 @@ function createFolder()
         let dir = path.join(env.DATAFOLDER, data[i], "/");
         if(!fs.existsSync(dir))
         {
+            if(dir.endsWith("_label/")) continue;
             fs.mkdirSync(dir);
         }
     }
@@ -84,11 +85,17 @@ function writeData(dest_component, loc_component, dest_label, loc_label, data)
     if(fs.existsSync(dest_component)) fs.unlinkSync(dest_component);
     if(fs.existsSync(dest_label)) fs.unlinkSync(dest_label);
     fs.copyFileSync(loc_component, dest_component);
-    fs.copyFileSync(loc_label, dest_label);
+    //fs.copyFileSync(loc_label, dest_label);
     count++;
 }
 
 function finish()
 {
+    let dirlist = fs.readdirSync(env.DATAFOLDER);
+    for(var i in dirlist)
+    {
+        let dir = path.join(env.DATAFOLDER, dirlist[i], "/");
+        if(fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+    }
     database.end();
 }
