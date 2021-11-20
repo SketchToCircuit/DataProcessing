@@ -247,6 +247,9 @@ def export_all(src_path, dest_path):
 
                         cmp = Component(component_img, label_img, label_off, pins, type)
                         
+                        if type == 'L2':
+                            cmp.type = 'L'
+
                         if type in ['R_H', 'C_H', 'L_H']:
                             cmp.type = cmp.type[0]
                         elif type in ['R_V', 'C_V', 'L_V']:
