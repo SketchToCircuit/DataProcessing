@@ -246,9 +246,6 @@ def export_all(src_path, dest_path):
                         label_off = np.array([-positioning['bounds'][0] * positioning['sf'] + lbl_minx, -positioning['bounds'][2] * positioning['sf'] + lbl_miny])
 
                         cmp = Component(component_img, label_img, label_off, pins, type)
-                        
-                        if type == 'L2':
-                            cmp.type = 'L'
 
                         if type in ['R_H', 'C_H', 'L_H']:
                             cmp.type = cmp.type[0]
@@ -299,4 +296,4 @@ def export_all(src_path, dest_path):
         json.dump(all_json, f)
 
 if __name__ == '__main__':
-    export_all('../Data/exported_data_17_11', './exported_data')
+    export_all('../Data/data_23_11_21', './exported_data')

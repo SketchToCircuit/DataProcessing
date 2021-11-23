@@ -50,7 +50,7 @@ class IPinDetection(ABC):
         raise NotImplementedError
 
 class TwoPinsHor(IPinDetection):
-    _COMP_TYPES = ['R', 'C', 'L', 'R_H', 'C_H', 'L_H',
+    _COMP_TYPES = ['R', 'C', 'L', 'L2', 'R_H', 'C_H', 'L_H',
     'LED', 'D', 'S1', 'S2', 'BTN1', 'BTN2', 'V_H', 'A_H', 'U_AC_H',
     'LMP', 'M', 'F', 'D_Z', 'D_S', 'C_P']
     NAME = 'TwoPinsHorizontale'

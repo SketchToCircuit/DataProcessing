@@ -30,7 +30,7 @@ class Lines:
         dy = (y2 - y1)
         step = 0.25
         squiglines = []
-        rndmborders = 10
+        rndmborders = int(max(min(np.random.normal(5, 2), 15), 1))
          
         ##create control points
         for i in range(num_points):

@@ -89,5 +89,4 @@ def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
 
     for img, pos, size in zip(images, positions, sizes):
         res_img[pos[1]:pos[1] + size[1], pos[0]:pos[0] + size[0]] = np.minimum(img, res_img[pos[1]:pos[1] + size[1], pos[0]:pos[0] + size[0]])
-
     return res_img

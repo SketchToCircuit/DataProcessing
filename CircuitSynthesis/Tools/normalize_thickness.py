@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import cv2
+import os
 
 def get_line_thic(img, line):
     thic = []
@@ -38,12 +39,11 @@ def normalize_thic(img, img_perc):
         lines = np.delete(lines, max_i, axis=0)
         thic.append(get_line_thic(img, line))
     
-    thickness = np.min(thic) * 0.5 + np.mean(thic) * 0.2 + np.median(thic) * 0.3
+    thickness = np.min(thic) * 0.8 + np.mean(thic) * 0.1 + np.median(thic) * 0.1
     goal = round(max(np.max(img.shape[:2]) * img_perc, 2))
     delta = int(goal - thickness)
 
     if delta > 0:
         img = cv2.erode(img, np.ones((delta, delta)), borderType=cv2.BORDER_CONSTANT, borderValue=255)
-
-    cv2.imshow('', img)
-    cv2.waitKey()
+    elif delta < 0:
+        img = cv2.dilate(img, np.ones((int(-delta / 2), int(-delta / 2))), borderType=cv2.BORDER_CONSTANT, borderValue=255)
