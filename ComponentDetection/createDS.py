@@ -1,9 +1,11 @@
 import os
+from matplotlib import pyplot
 import numpy as np
 import cv2
 import random
 import tensorflow as tf
 import json
+import matplotlib.pyplot as plt
 
 # Config
 DATA_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "ExportData/Data"))
@@ -57,8 +59,8 @@ def GetData():
         hint = HINTS.index(COMPONENTS[categorie])
         for img in os.listdir(path):
             img_array = cv2.imread(os.path.join(path,img), cv2.IMREAD_GRAYSCALE)
-            img_array = image_resize(img_array, width=IMG_SIZE, height=IMG_SIZE)
-            cv2.imshow('image', img_array)
+            img_array = image_resize(img_array, IMG_SIZE)
+            print(img_array.shape)
             training_data.append([img_array, hint, class_num, None])
     random.shuffle(training_data)
     return training_data
@@ -66,36 +68,26 @@ def GetData():
 def GetPins():
     print()
 
-def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
-    # initialize the dimensions of the image to be resized and
-    # grab the image size
-    dim = None
-    (h, w) = image.shape[:2]
+def image_resize(img , desired_size):
+    old_size = img.shape[:2] # old_size is in (height, width) format
 
-    # if both the width and height are None, then return the
-    # original image
-    if width is None and height is None:
-        return image
+    ratio = float(desired_size)/max(old_size)
+    new_size = tuple([int(x*ratio) for x in old_size])
 
-    # check to see if the width is None
-    if width is None:
-        # calculate the ratio of the height and construct the
-        # dimensions
-        r = height / float(h)
-        dim = (int(w * r), height)
+    # new_size should be in (width, height) format
 
-    # otherwise, the height is None
-    else:
-        # calculate the ratio of the width and construct the
-        # dimensions
-        r = width / float(w)
-        dim = (width, int(h * r))
+    img = cv2.resize(img, (new_size[1], new_size[0]))
 
-    # resize the image
-    resized = cv2.resize(image, dim, interpolation = inter)
-
-    # return the resized image
-    return resized
+    delta_w = desired_size - new_size[1]
+    delta_h = desired_size - new_size[0]
+    top, bottom = delta_h//2, delta_h-(delta_h//2)
+    left, right = delta_w//2, delta_w-(delta_w//2)
+    color = [0, 0, 0]
+    new_im = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,value=color)
+    test = plt.imshow(new_im)
+    plt.show()
+    input("")
+    return new_im
 
 CATEGORIES = ["R","C","L","LED","D","POT","S1","S2","BTN1","BTN2","V_V","V_H","A_H","A_V","U1","U2","I1","I2","U3","BAT","U_AC_H",
               "U_AC_V","SPK","MIC","LMP","M","S3","F","OPV","NPN","PNP","GND","GND_F","GND_C","D_Z","D_S","MFET_N_E","MFET_P_E","MFET_N_D","L2",
