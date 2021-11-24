@@ -11,12 +11,28 @@ from tensorflow.python.keras.layers.core import Dense
 from tensorflow.python.ops.gen_array_ops import concat, shape
 from tensorflow.python.ops.gen_batch_ops import batch
 
-#ToDo => Image preprocess
+#ToDo:
+# -> DataSet pipeline
+#   -> Import Arrays into DataSet
+#       -> Load all pictures on runtime ?without augmentation?
+#           -> Read images
+#           -> Read position data from json
+#   -> Data augmentation
+#       -> Resize image with padding ?and save scale?
+#       -> Rotate image
+#           -> same
+#       -> ?random noise over picture?
+#       -> Noise on hint input
+#       -> False positives on hint input
+# -> Change to predict connections
+#   -> Change NN to 2 inputs and 2 outputs
+#   -> Change loss function for the second output (y+x^2)
+#   ->  ?
 
 BATCH_SIZE = 60
 
-NUM_CATEGORIES = 45
-NUM_HINTS = 14
+NUM_CATEGORIES = 46
+NUM_HINTS = 15
 IMG_SIZE = 128
 
 EPOCHS = 100

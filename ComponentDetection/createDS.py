@@ -3,61 +3,105 @@ import numpy as np
 import cv2
 import random
 import tensorflow as tf
-import matplotlib.pyplot as plt
+import json
 
 # Config
-data_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "ExportData/Data"))
-dataset_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), "DataSet"))
+DATA_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "ExportData/Data"))
+DATASET_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), "DataSet"))
+DATAPIN_FILE = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "exported_data/data.json"))
+
 IMG_SIZE = 128
 
-def main():
-    data = createDS()
-    X = []
-    X_HINT = []
-    Y = []
-    for features, hint, label in data:
-        X.append(features)
-        X_HINT.append(hint)
-        Y.append(label)
+def GetDataSet():
+    data = GetData()
+    x_img = []
+    x_hint = []
+    y_label = []
+    y_pin = []
 
-    X = np.array(X).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+    for image, hint, label, pin in data:
+        x_img.append(image)
+        x_hint.append(hint)
+        y_label.append(label)
+        #y_pin.append(pin)
 
-    Y = np.array(Y)
-    Y = tf.keras.utils.to_categorical(Y, len(CATEGORIES))
-#    Y = tf.convert_to_tensor(Y)
+    x_img = np.array(x_img).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
 
-    X_HINT = np.array(X_HINT)
-    X_HINT = tf.keras.utils.to_categorical(X_HINT, len(HINTS))
-#    X_HINT = tf.convert_to_tensor(X_HINT)
-
-    np.save(os.path.join(dataset_dir, "X.npy"), X)
-    np.save(os.path.join(dataset_dir, "X_HINT.npy"), X_HINT)
-    np.save(os.path.join(dataset_dir, "Y.npy"), Y)
+    x_hint = np.array(x_hint)
+    x_hint = tf.keras.utils.to_categorical(x_hint, len(HINTS))
 
 
-def createDS():
+    y_label = np.array(y_label)
+    y_label = tf.keras.utils.to_categorical(y_label, len(CATEGORIES))
+
+    #y_pin = np.array(y_pin)
+
+
+    print("x_img: " , x_img.shape)
+    print("x_hint: ", x_hint.shape)
+    print("y_label: ", y_label.shape)
+    #print("y_pin: " + y_pin.shape)
+
+    #np.save(os.path.join(DATASET_DIR, "x_img.npy"), x_img)
+    #np.save(os.path.join(DATASET_DIR, "x_hint.npy"), x_hint)
+    #np.save(os.path.join(DATASET_DIR, "Y.npy"), y_label)
+
+
+def GetData():
+    pinFile = open(DATAPIN_FILE)
+    pinData = json.load(pinFile)
     training_data = []
     for categorie in CATEGORIES:
-        path = os.path.join(data_dir, categorie)
+        path = os.path.join(DATA_DIR, categorie)
         class_num = CATEGORIES.index(categorie)
         hint = HINTS.index(COMPONENTS[categorie])
         for img in os.listdir(path):
             img_array = cv2.imread(os.path.join(path,img), cv2.IMREAD_GRAYSCALE)
-            img_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))
-            training_data.append([img_array, hint, class_num])
+            img_array = image_resize(img_array, width=IMG_SIZE, height=IMG_SIZE)
+            cv2.imshow('image', img_array)
+            training_data.append([img_array, hint, class_num, None])
     random.shuffle(training_data)
     return training_data
 
-#x_daten Lade Bilder -> [Categorien[Bilder[Bildaten, onehot]]]
-#y_daten Lade Bilder -> [Categorien[Bilder[dirName]]]
-# def customGenerator(data):
-#    for i in data:
+def GetPins():
+    print()
+
+def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
+    # initialize the dimensions of the image to be resized and
+    # grab the image size
+    dim = None
+    (h, w) = image.shape[:2]
+
+    # if both the width and height are None, then return the
+    # original image
+    if width is None and height is None:
+        return image
+
+    # check to see if the width is None
+    if width is None:
+        # calculate the ratio of the height and construct the
+        # dimensions
+        r = height / float(h)
+        dim = (int(w * r), height)
+
+    # otherwise, the height is None
+    else:
+        # calculate the ratio of the width and construct the
+        # dimensions
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    # resize the image
+    resized = cv2.resize(image, dim, interpolation = inter)
+
+    # return the resized image
+    return resized
 
 CATEGORIES = ["R","C","L","LED","D","POT","S1","S2","BTN1","BTN2","V_V","V_H","A_H","A_V","U1","U2","I1","I2","U3","BAT","U_AC_H",
-              "U_AC_V","SPK","MIC","LMP","M","S3","F","OPV","NPN","PNP","GND","GND_F","GND_C","D_Z","D_S","MFET_N_E","MFET_P_E","MFET_N_D",
+              "U_AC_V","SPK","MIC","LMP","M","S3","F","OPV","NPN","PNP","GND","GND_F","GND_C","D_Z","D_S","MFET_N_E","MFET_P_E","MFET_N_D","L2",
               "MFET_P_D","JFET_N","JFET_P","C_P","PIN","M_V"]
 
-HINTS = ["circle", "battery", "button", "capacitor", "diode", "resistor", "ground", "transistor", "coil", "microphone", "opv", "pin", "potentiometer", "speaker"]
+HINTS = ["circle", "battery", "button", "capacitor", "diode", "resistor", "ground", "transistor", "coil", "microphone", "opv", "pin", "potentiometer", "speaker", "l2"]
 
 COMPONENTS = {
     'A_H': 'circle',
@@ -104,9 +148,8 @@ COMPONENTS = {
     'U_AC_H': 'circle',
     'U_AC_V': 'circle',
     'V_H': 'circle',
-    'V_V': 'circle'#,
-#    'L2' : 'L2'
+    'V_V': 'circle',
+    'L2' : 'l2'
 }
 
-if __name__ == '__main__':
-    main()
+GetDataSet()
