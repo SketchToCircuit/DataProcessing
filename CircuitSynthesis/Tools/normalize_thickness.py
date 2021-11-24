@@ -14,7 +14,7 @@ def get_line_thic(img, line):
         mid = line[0] + (line[1] - line[0]) / (NUM_L + 1) * (i+1)
 
         n_line = [mid - normal / 2.0, mid + normal / 2.0]
-        n_line = np.where(n_line >= np.array(img.shape)[::-1], np.array(img.shape)[::-1] - 1, n_line)
+        n_line = np.where(n_line >= np.array(img.shape, dtype=int)[::-1], np.array(img.shape, dtype=int)[::-1] - 1, n_line)
         n_line = np.where(n_line < 0, 0, n_line)
 
         x = np.linspace(n_line[0][0], n_line[1][0], 30, dtype=int)
@@ -44,6 +44,6 @@ def normalize_thic(img, img_perc):
     delta = int(goal - thickness)
 
     if delta > 0:
-        img = cv2.erode(img, np.ones((delta, delta)), borderType=cv2.BORDER_CONSTANT, borderValue=255)
+        img = cv2.erode(img, np.ones((delta, delta), dtype=int), borderType=cv2.BORDER_CONSTANT, borderValue=255)
     elif delta < 0:
-        img = cv2.dilate(img, np.ones((int(-delta / 2), int(-delta / 2))), borderType=cv2.BORDER_CONSTANT, borderValue=255)
+        img = cv2.dilate(img, np.ones((int(-delta / 2), int(-delta / 2)), dtype=int), borderType=cv2.BORDER_CONSTANT, borderValue=255)

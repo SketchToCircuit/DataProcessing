@@ -13,7 +13,7 @@ class Lines:
         while t <= 1.0:
             pts.append(
                 ##np.array vonverts points List into np-array 
-                np.around((1-t)*(1-t)*(1-t)*np.array(points[0]) + 3*t*(1-t)*(1-t)*np.array(points[1]) + 3*t*t*(1-t)*np.array(points[2]) + t*t*t*np.array(points[3]))
+                np.around((1-t)*(1-t)*(1-t)*np.array(points[0]) + 3*t*(1-t)*(1-t)*np.array(points[1], dtype=float) + 3*t*t*(1-t)*np.array(points[2], dtype=float) + t*t*t*np.array(points[3], dtype=float))
             )
 
             t += step
@@ -22,7 +22,7 @@ class Lines:
 
     @staticmethod
     def squigglyline(x1, y1, x2, y2, picture, thickness, color):
-        distance = math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
+        distance = max(math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)), 0.01)
         pointdistance = 80
         num_points = math.ceil(distance / pointdistance) + 1
         helpingpoints = []
@@ -43,8 +43,7 @@ class Lines:
 
         helpingpoints[0] = (x1, y1)
         helpingpoints[-1] = (x2, y2)
-        controlpoints = np.array(helpingpoints)
-        controlpoints = np.int32(controlpoints)
+        controlpoints = np.array(helpingpoints, dtype=np.int32)
 
         ##create handle points 
         for i in range(num_points):
@@ -73,14 +72,12 @@ class Lines:
             ))
 
         helpingpoints = helpingpoints[1:-1]
-        handles = np.array(helpingpoints)
-        handles = np.int32(handles)
+        handles = np.array(helpingpoints, dtype=np.int32)
 
         for i in range(0, len(helpingpoints) - 1, 3):
             squiglines += Lines.beziercurve(helpingpoints[i:i+4],step)
         
-        line = np.array(squiglines)
-        line = np.int32([line])
+        line = np.array([squiglines], dtype=np.int32)
 
         cv2.polylines(picture, line, False, color, thickness)
        

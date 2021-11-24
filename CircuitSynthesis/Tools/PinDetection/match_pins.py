@@ -53,7 +53,7 @@ class TwoPinsHor(IPinDetection):
     _COMP_TYPES = ['R', 'C', 'L', 'L2', 'R_H', 'C_H', 'L_H',
     'LED', 'D', 'S1', 'S2', 'BTN1', 'BTN2', 'V_H', 'A_H', 'U_AC_H',
     'LMP', 'M', 'F', 'D_Z', 'D_S', 'C_P']
-    NAME = 'TwoPinsHorizontale'
+    NAME = 'TwoPinsHorizontal'
 
     @staticmethod
     def get_pins(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
@@ -228,7 +228,7 @@ class Potentiometer(IPinDetection):
         mask = np.abs(angles * 180 / math.pi - 50) < 41
         lines = lines[mask, :, :]
 
-        # get point with maximum of: 2 * y - abs(x - cx) to take lines near to horizontale center
+        # get point with maximum of: 2 * y - abs(x - cx) to take lines near to horizontal center
         values = 2 * lines[:, :, 1] - np.abs(lines[:, :, 0] - centroid[0])
         bottom_point = lines[np.unravel_index(np.argmax(values), values.shape[0:2])]
 
@@ -264,7 +264,7 @@ class Potentiometer(IPinDetection):
         mask = np.logical_xor(left_c[:, 0], left_c[:, 1])
         diagonal_lines = diagonal_lines[mask, :, :]
 
-        # mask for lines near horizontale center
+        # mask for lines near horizontal center
         mask = np.abs((diagonal_lines[:, 0, 0] + diagonal_lines[:, 1, 0]) / 2 - centroid[0]) < img_size[1] / 5
 
         if np.count_nonzero(mask) > 0:
@@ -304,7 +304,7 @@ class _Transistor:
     def get_pin_points(lines: np.ndarray, centroid: np.ndarray, img_size: np.ndarray):
         left = OnePinLeft.get_pins(lines, centroid, img_size)['1']
 
-        # filter horizontale lines
+        # filter horizontal lines
         deltas = np.abs(np.diff(lines, axis=-2).squeeze(axis=-2))
         # create mask for elements where atan2(dy, dx) in [20°; 90°]
         angles = np.arctan2(deltas[:, 1], deltas[:, 0])
@@ -314,10 +314,10 @@ class _Transistor:
         # move centroid to the right to center for the right pins
         centroid[0] += img_size[1] / 4
 
-        # get point with minimum of: y + abs(x - cx) to take lines near to horizontale center
+        # get point with minimum of: y + abs(x - cx) to take lines near to horizontal center
         values = lines[:, :, 1] + np.abs(lines[:, :, 0] - centroid[0])
         top_point = lines[np.unravel_index(np.argmin(values), values.shape[0:2])]
-        # get point with maximum of: y - abs(x - cx) to take lines near to horizontale center
+        # get point with maximum of: y - abs(x - cx) to take lines near to horizontal center
         values = lines[:, :, 1] - np.abs(lines[:, :, 0] - centroid[0])
         bottom_point = lines[np.unravel_index(np.argmax(values), values.shape[0:2])]
 
