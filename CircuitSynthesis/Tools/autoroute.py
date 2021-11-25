@@ -276,33 +276,40 @@ def route(components: List[CirCmp], connections: List[Tuple[CirCmp, Pin, CirCmp,
     return circuit
 
 def main():
-    unload_cmp = import_components('./exported_data/data.json')
+    from .export_tfrecords import export_circuits, inspect_record
 
-    start_time = time.perf_counter()
+    circuits = []
+    for i in range(10):
+        unload_cmp = import_components('./exported_data/data.json')
 
-    components = [CirCmp('C_P', r.load(), np.random.randint(600, size=(2)) + i * 200) for i, r in enumerate(random.sample(unload_cmp['C_P'], 3))]
+        #start_time = time.perf_counter()
 
-    for cmp in components:
-        cmp.cmp.scale((random.random() * 200 + 200) / np.max(cmp.cmp.component_img.shape))
-        cmp.cmp.rotate(45)
+        components = [CirCmp('C_P', r.load(), np.random.randint(600, size=(2)) + i * 200) for i, r in enumerate(random.sample(unload_cmp['C_P'], 3))]
 
-    connections = []
-    connections.append((components[0], components[0].cmp.pins['1'], components[1], components[1].cmp.pins['1']))
-    components.append(CirCmp('knot', None, None))
-    components.append(CirCmp('knot', None, None))
-    connections.append((components[1], components[1].cmp.pins['2'], components[-1], None))
-    connections.append((components[2], components[2].cmp.pins['1'], components[-1], None))
-    connections.append((components[-2], None, components[-1], None))
-    connections.append((components[-2], None, components[0], components[0].cmp.pins['2']))
+        for cmp in components:
+            cmp.cmp.scale((random.random() * 200 + 200) / np.max(cmp.cmp.component_img.shape))
+            #cmp.cmp.rotate(45)
 
-    routed = route(components, connections)
-    img = draw_routed_circuit(routed)
-    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        connections = []
+        connections.append((components[0], components[0].cmp.pins['1'], components[1], components[1].cmp.pins['1']))
+        components.append(CirCmp('knot', None, None))
+        components.append(CirCmp('knot', None, None))
+        connections.append((components[1], components[1].cmp.pins['2'], components[-1], None))
+        connections.append((components[2], components[2].cmp.pins['1'], components[-1], None))
+        connections.append((components[-2], None, components[-1], None))
+        connections.append((components[-2], None, components[0], components[0].cmp.pins['2']))
+
+        routed = route(components, connections)
+        circuits.append(routed)
+        # img = draw_routed_circuit(routed)
+        # img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     
-    print(f'{(time.perf_counter() - start_time) * 1000} ms')
+    # print(f'{(time.perf_counter() - start_time) * 1000} ms')
 
-    cv2.imshow('', img)
-    cv2.waitKey()
+    # cv2.imshow('', img)
+    # cv2.waitKey()
+    export_circuits(circuits, 'train.tfrecord', 'val.tfrecord')
+    inspect_record('train.tfrecord')
 
 if __name__ == '__main__':
     main()

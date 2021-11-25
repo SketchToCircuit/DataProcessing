@@ -1,23 +1,15 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import random
 import math
 
 class Lines:
     @staticmethod
     def beziercurve( points: list, step):
-        pts=[]
-        t = 0.0
 
-        while t <= 1.0:
-            pts.append(
-                ##np.array vonverts points List into np-array 
-                np.around((1-t)*(1-t)*(1-t)*np.array(points[0]) + 3*t*(1-t)*(1-t)*np.array(points[1], dtype=float) + 3*t*t*(1-t)*np.array(points[2], dtype=float) + t*t*t*np.array(points[3], dtype=float))
-            )
-
-            t += step
-
+        t = np.linspace(0.0, 1.0, math.ceil(1.0 / step) + 1)
+        t = np.expand_dims(t, 1)
+        pts = (1-t)*(1-t)*(1-t)*np.array(points[0], dtype=float) + 3*t*(1-t)*(1-t)*np.array(points[1], dtype=float) + 3*t*t*(1-t)*np.array(points[2], dtype=float) + t*t*t*np.array(points[3], dtype=float)
         return pts
 
     @staticmethod
@@ -29,7 +21,6 @@ class Lines:
         dx = (x2 - x1)
         dy = (y2 - y1)
         step = 0.25
-        squiglines = []
         rndmborders = int(max(min(np.random.normal(5, 2), 15), 1))
          
         ##create control points
@@ -72,10 +63,11 @@ class Lines:
             ))
 
         helpingpoints = helpingpoints[1:-1]
-        handles = np.array(helpingpoints, dtype=np.int32)
 
-        for i in range(0, len(helpingpoints) - 1, 3):
-            squiglines += Lines.beziercurve(helpingpoints[i:i+4],step)
+        squiglines = Lines.beziercurve(helpingpoints[:4],step)        
+
+        for i in range(3, len(helpingpoints) - 1, 3):
+            squiglines = np.concatenate((squiglines, Lines.beziercurve(helpingpoints[i:i+4], step)))
         
         line = np.array([squiglines], dtype=np.int32)
 
