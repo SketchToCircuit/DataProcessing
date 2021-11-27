@@ -37,6 +37,8 @@ def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
     min_pos = np.min(positions, axis=0)
     max_pos = np.max(positions + sizes, axis=0)
 
+    circuit.offset_positions(min_pos)
+
     if len(images[0].shape) == 3:
         shape = max_pos - min_pos
         shape = (shape[1], shape[0], images[0].shape[2])

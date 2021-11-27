@@ -58,6 +58,15 @@ class RoutedCircuit:
     lines: List[ConnLine]
     knots: List[Knot] = None
 
+    def offset_positions(self, offset):
+        for knot in self.knots:
+            knot.position -= offset
+        for line in self.lines:
+            line.start -= offset
+            line.end -= offset
+        for cmp in self.components:
+            cmp.pos -= offset
+
     def convert_knot_cmp(self):
         self.knots = self.knots if self.knots else []
         for cmp in self.components:
