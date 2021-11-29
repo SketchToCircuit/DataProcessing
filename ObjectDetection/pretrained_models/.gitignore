@@ -1,0 +1,5 @@
+# ignore all pretrained models
+*
+*/
+!.gitignore
+!links.txt

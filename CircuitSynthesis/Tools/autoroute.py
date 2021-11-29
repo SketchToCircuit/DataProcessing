@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 import cv2
 import random
-import time
+import math
 
 from numpy.random.mtrand import normal
 
@@ -285,28 +285,32 @@ def route(components: List[CirCmp], connections: List[Tuple[CirCmp, Pin, CirCmp,
     return circuit
 
 def main():
-    from .export_tfrecords import export_circuits, inspect_record
+    from .export_tfrecords import export_circuits, export_label_map
 
     circuits = []
-    for i in range(10):
+    for i in range(100):
         unload_cmp = import_components('./exported_data/data.json')
 
         #start_time = time.perf_counter()
 
-        components = [CirCmp('C_P', r.load(), np.random.randint(600, size=(2)) + i * 200) for i, r in enumerate(random.sample(unload_cmp['C_P'], 3))]
+        components = [CirCmp(t, r.load(), np.zeros(2)) for t in ['R', 'L', 'C', 'L2', 'C_P', 'F'] for i, r in enumerate(random.sample(unload_cmp[t], 3))]
 
-        for cmp in components:
+        cmp_side_num = round(math.sqrt(len(components)))
+
+        for i, cmp in enumerate(components):
+            x, y = i // cmp_side_num, i % cmp_side_num
+            cmp.pos = np.array([x, y]) * 300 + np.random.normal(0, 50, 2)
             cmp.cmp.scale((random.random() * 200 + 200) / np.max(cmp.cmp.component_img.shape))
             #cmp.cmp.rotate(45)
 
         connections = []
-        connections.append((components[0], components[0].cmp.pins['1'], components[1], components[1].cmp.pins['1']))
-        components.append(CirCmp('knot', None, None))
-        components.append(CirCmp('knot', None, None))
-        connections.append((components[1], components[1].cmp.pins['2'], components[-1], None))
-        connections.append((components[2], components[2].cmp.pins['1'], components[-1], None))
-        connections.append((components[-2], None, components[-1], None))
-        connections.append((components[-2], None, components[0], components[0].cmp.pins['2']))
+        #connections.append((components[0], components[0].cmp.pins['1'], components[1], components[1].cmp.pins['1']))
+        #components.append(CirCmp('knot', None, None))
+        #components.append(CirCmp('knot', None, None))
+        #connections.append((components[1], components[1].cmp.pins['2'], components[-1], None))
+        #connections.append((components[2], components[2].cmp.pins['1'], components[-1], None))
+        #connections.append((components[-2], None, components[-1], None))
+        #connections.append((components[-2], None, components[0], components[0].cmp.pins['2']))
 
         routed = route(components, connections)
         circuits.append(routed)
@@ -317,8 +321,10 @@ def main():
 
     # cv2.imshow('', img)
     # cv2.waitKey()
-    export_circuits(circuits, 'train.tfrecord', 'val.tfrecord')
-    inspect_record('train.tfrecord')
+    export_circuits(circuits, 'ObjectDetection/data/train.tfrecord', 'ObjectDetection/data/val.tfrecord')
+    export_label_map('ObjectDetection/data/label_map.pbtxt')
 
 if __name__ == '__main__':
+    from .export_tfrecords import inspect_record
     main()
+    inspect_record('ObjectDetection/data/train.tfrecord', 2)

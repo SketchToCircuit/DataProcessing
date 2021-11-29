@@ -1,6 +1,4 @@
 import os
-from re import T
-import typing
 import numpy as np
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -29,10 +27,17 @@ def _parse_fine_to_coarse(path: str = 'ObjectDetection/fine_to_coarse_labels.txt
     
     return convert_dict
 
+def export_label_map(dest_path, src_path: str = 'ObjectDetection/fine_to_coarse_labels.txt'):
+    fine_to_coarse = _parse_fine_to_coarse(src_path)
+
+    with open(dest_path, 'w') as f:
+        for name, id in set(fine_to_coarse.values()):
+            f.write(f'item {{\n\tid: {int(id)}\n\tname: "{name}"\n}}\n')
+
 def _circuit_to_example(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str, int]]):
     img = draw_routed_circuit(circ, labels=True)
     img_h, img_w = img.shape
-    encoded_image = tf.io.encode_jpeg(np.expand_dims(img, -1), format='grayscale').numpy()
+    encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
 
     xmins = []
     ymins = []
@@ -82,7 +87,7 @@ def export_circuits(circuits: List[RoutedCircuit], train_path, val_path, val_spl
         for circ in circuits[num_train:]:
             val_writer.write(_circuit_to_example(circ, label_convert).SerializeToString())
 
-def inspect_record(path):
+def inspect_record(path, num):
     dataset = tf.data.TFRecordDataset(path)
 
     ft_desc = {
@@ -101,9 +106,8 @@ def inspect_record(path):
 
     dataset = dataset.map(lambda example: tf.io.parse_single_example(example, ft_desc))
 
-    for example in dataset:
+    for example in dataset.take(num):
         img = tf.io.decode_jpeg(example['image/encoded']).numpy()
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
         for xmin, xmax, ymin, ymax, text, label in zip(example['image/object/bbox/xmin'].values.numpy(), example['image/object/bbox/xmax'].values.numpy(), example['image/object/bbox/ymin'].values.numpy(), example['image/object/bbox/ymax'].values.numpy(), example['image/object/class/text'].values.numpy(), example['image/object/class/label'].values.numpy()):

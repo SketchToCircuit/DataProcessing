@@ -103,7 +103,7 @@ dist
 .tern-port
 
 # from data export
-Data/
+ExportData/Data/
 
 # VS-Code
 .vscode/
