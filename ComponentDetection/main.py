@@ -1,15 +1,16 @@
-from operator import le
-import tensorflow as tf
+
 import numpy as np
 import os
-from tensorflow import keras
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+import tensorflow as tf
 from tensorflow._api.v2 import data
-from tensorflow.keras import layers
-from tensorflow.python.keras.engine.input_layer import Input
-from tensorflow.python.keras.layers.advanced_activations import Softmax
-from tensorflow.python.keras.layers.core import Dense
-from tensorflow.python.ops.gen_array_ops import concat, shape
-from tensorflow.python.ops.gen_batch_ops import batch
+import tensorflow.keras.layers as layers
+import createDS
+
+physical_devices = tf.config.list_physical_devices("GPU")
+if len(physical_devices) <= 0:
+    print("No GPU detected!")
 
 #ToDo:
 # -> DataSet pipeline
@@ -30,58 +31,43 @@ from tensorflow.python.ops.gen_batch_ops import batch
 #   ->  ?
 
 BATCH_SIZE = 60
-
-NUM_CATEGORIES = 46
-NUM_HINTS = 15
 IMG_SIZE = 128
-
-EPOCHS = 100
-
-dataset_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), "DataSet"))
+EPOCHS = 10
 
 def main():
-    X, X_VAL , Y , Y_VAL , X_HINT , X_HINT_VAL = dataProc()
+    dataset = createDS.GetDataSet()
     model = getModel()
-    keras.utils.plot_model(
-        model
-    )
+    dataset = dataset.batch(32)
+#    keras.utils.plot_model(
+#        model
+#    )
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    model.fit([X_HINT, X], Y, epochs=EPOCHS, batch_size = BATCH_SIZE, validation_data=([X_HINT_VAL, X_VAL], Y_VAL))
+    model.fit(dataset, epochs=EPOCHS)
 
-def dataProc():
-    X = np.load(os.path.join(dataset_dir, "X.npy"))
-    X_HINT = np.load(os.path.join(dataset_dir, "X_HINT.npy"))
-    Y = np.load(os.path.join(dataset_dir, "Y.npy"))
 
-    X, X_HINT, Y = dataAugm(X, X_HINT, Y)
-
-    X_HINT, X_HINT_VAL = np.split(X_HINT, [int(0.7*len(X_HINT))])
-    X, X_VAL = np.split(X, [int(0.7*len(X))])
-    Y, Y_VAL =np.split(Y, [int(0.7*len(Y))])
-    return X, X_VAL , Y , Y_VAL , X_HINT , X_HINT_VAL
-
-def dataAugm(X, X_HINT, Y):
-    return X, X_HINT, Y
 
 def getModel():
-    input0 = keras.Input(shape=(NUM_HINTS), name='hint')
-    input1 = keras.Input(shape=(128,128,1), name='img')
+    input1 = tf.keras.Input(shape=(16), name='input1')
+    input2 = tf.keras.Input(shape=(128,128,1), name='input2')
 
-    y = layers.Conv2D(64, 3, activation='relu')(input1)
+    y = layers.Conv2D(64, 3, activation='relu')(input2)
     y = layers.Conv2D(32, 3, activation='relu')(y)
     y = layers.MaxPool2D()(y)
     y = layers.Flatten()(y)
     y = layers.Dense(128, activation='relu')(y)
 
-    x = layers.Dense(128, activation='relu')(input0)
+    x = layers.Dense(128, activation='relu')(input1)
     x = layers.Dense(64 , activation='relu')(x)
     x = layers.Dense(32 , activation='relu')(x)
 
     z = layers.Concatenate()([x, y])
     z = layers.Dense(128, activation='relu')(z)
-    z = layers.Dense(NUM_CATEGORIES, activation='softmax', name='output')(z)
+    h = layers.Dense(128, activation='relu')(z)
 
-    model = keras.Model(inputs = [input0, input1], outputs = z, name="predict")
+    z = layers.Dense(46, activation='softmax', name='output1')(z)
+    h = layers.Dense(6, activation='relu', name='output2')(h)
+
+    model = tf.keras.Model(inputs = [input1, input2], outputs = [z, h], name='predict')
     return model
 
 if __name__ == '__main__':

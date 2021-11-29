@@ -296,4 +296,4 @@ def export_all(src_path, dest_path):
         json.dump(all_json, f)
 
 if __name__ == '__main__':
-    export_all('../Data/data_23_11_21', './exported_data')
+    export_all('../data/saved', './exported_data')
