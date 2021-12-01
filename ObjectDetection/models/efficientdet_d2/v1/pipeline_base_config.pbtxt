@@ -1,0 +1,62 @@
+model {
+    ssd {
+        num_classes: 16
+        image_resizer {
+            keep_aspect_ratio_resizer {
+                min_dimension: 768
+                max_dimension: 768
+                pad_to_max_dimension: true
+            }
+        }
+    }
+}
+
+train_config {
+    batch_size: 8
+
+    data_augmentation_options {
+        random_horizontal_flip {
+        }
+    }
+    
+    data_augmentation_options {
+        random_scale_crop_and_pad_to_square {
+            output_size: 768
+            scale_min: 0.10000000149011612
+            scale_max: 2.0
+        }
+    }
+    
+    fine_tune_checkpoint: "./ObjectDetection/pretrained_models/efficientdet_d2/checkpoint/ckpt-0"
+    num_steps: 300000
+    startup_delay_steps: 0.0
+    replicas_to_aggregate: 8
+    max_number_of_boxes: 100
+    unpad_groundtruth_tensors: false
+    fine_tune_checkpoint_type: "detection"
+    use_bfloat16: false
+    fine_tune_checkpoint_version: V2
+}
+    
+train_input_reader: {
+    label_map_path: "./ObjectDetection/data/label_map.pbtxt"
+    tf_record_input_reader {
+        input_path: "./ObjectDetection/data/train.tfrecord"
+    }
+}
+  
+eval_config: {
+    metrics_set: "coco_detection_metrics"
+    use_moving_averages: false
+    batch_size: 1;
+}
+  
+eval_input_reader: {
+    label_map_path: "./ObjectDetection/data/label_map.pbtxt"
+    shuffle: false
+    num_epochs: 1
+    tf_record_input_reader {
+        input_path: "./ObjectDetection/data/val.tfrecord"
+    }
+  }
+  
