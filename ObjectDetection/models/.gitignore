@@ -1,0 +1,4 @@
+#ignore logs and checkpoints
+train/
+checkpoint*
+ckpt*
