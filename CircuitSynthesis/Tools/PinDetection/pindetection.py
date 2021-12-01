@@ -82,8 +82,8 @@ class Component:
     
     def scale(self, scale_factor: float):
         '''Scale images and offsets by "scale_factor" (all axis with the same factor)'''
-        self.component_img = cv2.resize(self.component_img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_CUBIC)
-        self.label_img = cv2.resize(self.label_img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_CUBIC)
+        self.component_img = cv2.resize(self.component_img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+        self.label_img = cv2.resize(self.label_img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
         self.label_offset = (self.label_offset.astype(float) * scale_factor).astype(int)
 
         for pin in self.pins.values():
