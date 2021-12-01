@@ -39,7 +39,7 @@ class ConnLine:
     crossing: bool = False
 
     def to_img(self):
-        thick = random.randint(2, 6)
+        thick = random.randint(1, 2)
         size = np.round(np.abs(self.start - self.end)).astype(int) + thick * 8 + 20
         img = np.full(size[::-1], 255, dtype=np.uint8)
         mid = (self.start + self.end) / 2.0

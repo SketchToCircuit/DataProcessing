@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Tuple, List
+
+from cv2 import waitKey
 import Tools.PinDetection.pindetection as pd
 from Tools.squigglylines import * 
 from Tools.autoroute import *
@@ -65,25 +67,21 @@ def main():
 
     # randomly select if it should be a Component Line or SubComponent 
     offset = ()
-    gridsize = 128#50px
+    gridsize = 150
     #newBounding
     pos = ()
-    compList = []
-    conList = []
+    compList: List[CirCmp] = []
+    conList :List[Tuple[CirCmp, Pin, CirCmp, Pin]] = []
+    unsatisfiedList = [] # sollte durch statisches array ersretzt werden
     #set the components
-    for i in range(partamount):
-        if random.random() < 0.05:
-            if random.random() < 0.33:
-                cmp = bridgecircuit()
-            elif random.random() < 0.66:
-                pass
-            else:
-                pass
-        else:
+    rancols = random.randint(5, 10)
+    ranrows = math.ceil(partamount / rancols)
+    for i in range(rancols):
+        for j in range(ranrows):
             componentSize = int(random.randint(64,128))
             pos = (
-            i * gridsize + random.randint(-50, 50),
-            i * gridsize + random.randint(-50, 50))
+            i * gridsize + random.randint(-25, 25),
+            j * gridsize + random.randint(-25, 25))
 
             random_type = random.sample(components.keys(), k=1)[0]
             cmp = random.sample(components[random_type], k=1)[0]
@@ -92,8 +90,48 @@ def main():
             cmp.scale(componentSize / np.max(cmp.component_img.shape))
             cmp.rotate(random.randint(-5,5))
 
-        newEntry = CirCmp(components.type(), cmp, pos)
-        compList.append(newEntry)
+            newEntry = CirCmp(random_type, cmp, pos)
+            compList.append(newEntry)
+
+
+    for i in range(partamount):
+        if len([*compList[i].cmp.pins.values()]) == 3:
+            unsatisfiedList.append((i, 2))#third pin
+        elif len([*compList[i].cmp.pins.values()]) == 1:
+             unsatisfiedList.append((i, 0))#thirst pin
+        else:
+            print(i)
+            conList.append((
+               compList[i],
+               [*compList[i].cmp.pins.values()][1],
+               compList[i + 1],
+               [*compList[i + 1].cmp.pins.values()][0]
+            ))
+    conList.append((
+               compList[0],
+               [*compList[0].cmp.pins.values()][1],
+               compList[-1],
+               [*compList[-1].cmp.pins.values()][0]
+    ))
+
+    print(len(unsatisfiedList))
+    for i in range(len(unsatisfiedList)):
+        print("Test")
+        print(unsatisfiedList[i][0])
+        conList.append((
+              compList[unsatisfiedList[i - 1][0]],
+              [*compList[unsatisfiedList[i - 1][0]].cmp.pins.values()][unsatisfiedList[i - 1][1]],
+              compList[unsatisfiedList[i][0]],
+              [*compList[unsatisfiedList[i][0]].cmp.pins.values()][unsatisfiedList[i][1]]
+            ))
+
+        
+    print(len(conList)) 
+    print(partamount)
+    print(rancols)
+    print(ranrows)
+    cv2.imshow("reset",draw_routed_circuit(route(compList, conList)))
+    cv2.waitKey(0)
 
 if __name__ == '__main__':
     main()

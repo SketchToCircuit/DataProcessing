@@ -15,4 +15,4 @@ cmp.component_img[::-1]
 
 pd.combine_images(cmp.component_img, cmp.label_img, cmp.label_offset)
 
-[*cmp.pins.values()][0].direction
+[*cmp.pins.values()][2]
