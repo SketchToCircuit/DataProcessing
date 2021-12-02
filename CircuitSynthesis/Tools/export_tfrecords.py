@@ -11,6 +11,7 @@ import random
 from .dataset_utils import *
 from .autoroute import RoutedCircuit
 from .render import draw_routed_circuit
+from .split_circuits import split_circuit
 
 physical_devices = tf.config.list_physical_devices("GPU")
 if len(physical_devices) > 0:
@@ -34,40 +35,53 @@ def export_label_map(dest_path, src_path: str = 'ObjectDetection/fine_to_coarse_
         for name, id in set(fine_to_coarse.values()):
             f.write(f'item {{\n\tid: {int(id)}\n\tname: "{name}"\n}}\n')
 
-def _circuit_to_example(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str, int]]):
+def _point_in_img(x, y, w, h):
+    return x > 0 and x < w and y > 0 and y < h
+
+def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str, int]]):
     img = draw_routed_circuit(circ, labels=True)
-    img_h, img_w = img.shape
-    encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
 
-    xmins = []
-    ymins = []
-    ymaxs = []
-    xmaxs = []
-    types = []
-    ids = []
+    bboxs = [(cmp.pos[0], cmp.pos[1], cmp.cmp.component_img.shape[1] + cmp.pos[0], cmp.cmp.component_img.shape[0]+ cmp.pos[1]) for cmp in circ.components]
+    
+    tf_label_and_data = []
 
-    for cmp in circ.components:
-        types.append(label_convert[cmp.type_id][0].encode('utf8'))
-        ids.append(label_convert[cmp.type_id][1])
-        xmins.append(cmp.pos[0] / img_w)
-        ymins.append(cmp.pos[1] / img_h)
-        xmaxs.append((cmp.cmp.component_img.shape[1] + cmp.pos[0]) / img_w)
-        ymaxs.append((cmp.cmp.component_img.shape[0]+ cmp.pos[1]) / img_h)
+    for bboxs, img in split_circuit(bboxs, img):
+        encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
+        img_h, img_w = img.shape
 
-    tf_label_and_data = tf.train.Example(features=tf.train.Features(feature={
-      'image/height': int64_feature(img_h),
-      'image/width': int64_feature(img_w),
-      'image/filename': bytes_feature(b''),
-      'image/source_id': bytes_feature(b''),
-      'image/encoded': bytes_feature(encoded_image),
-      'image/format': bytes_feature(b'jpeg'),
-      'image/object/bbox/xmin': float_list_feature(xmins),
-      'image/object/bbox/xmax': float_list_feature(xmaxs),
-      'image/object/bbox/ymin': float_list_feature(ymins),
-      'image/object/bbox/ymax': float_list_feature(ymaxs),
-      'image/object/class/text': bytes_list_feature(types),
-      'image/object/class/label': int64_list_feature(ids),
-  }))
+        xmins = []
+        ymins = []
+        ymaxs = []
+        xmaxs = []
+        types = []
+        ids = []
+
+        for i, bbox in enumerate(bboxs):
+            if _point_in_img(bbox[0], bbox[1], img_w, img_h) or \
+            _point_in_img(bbox[2], bbox[3], img_w, img_h) or \
+            _point_in_img(bbox[0], bbox[3], img_w, img_h) or \
+            _point_in_img(bbox[2], bbox[1], img_w, img_h):
+                types.append(label_convert[circ.components[i].type_id][0].encode('utf8'))
+                ids.append(label_convert[circ.components[i].type_id][1])
+                xmins.append(np.clip(bbox[0] / img_w, 0, 1))
+                ymins.append(np.clip(bbox[1] / img_h, 0, 1))
+                xmaxs.append(np.clip(bbox[2] / img_w, 0, 1))
+                ymaxs.append(np.clip(bbox[3] / img_h, 0, 1))
+
+        tf_label_and_data.append(tf.train.Example(features=tf.train.Features(feature={
+            'image/height': int64_feature(img_h),
+            'image/width': int64_feature(img_w),
+            'image/filename': bytes_feature(b''),
+            'image/source_id': bytes_feature(b''),
+            'image/encoded': bytes_feature(encoded_image),
+            'image/format': bytes_feature(b'jpeg'),
+            'image/object/bbox/xmin': float_list_feature(xmins),
+            'image/object/bbox/xmax': float_list_feature(xmaxs),
+            'image/object/bbox/ymin': float_list_feature(ymins),
+            'image/object/bbox/ymax': float_list_feature(ymaxs),
+            'image/object/class/text': bytes_list_feature(types),
+            'image/object/class/label': int64_list_feature(ids),
+        })))
 
     return tf_label_and_data
 
@@ -81,11 +95,13 @@ def export_circuits(circuits: List[RoutedCircuit], train_path, val_path, val_spl
 
     with tf.io.TFRecordWriter(train_path) as train_writer:
         for circ in circuits[:num_train]:
-            train_writer.write(_circuit_to_example(circ, label_convert).SerializeToString())
+            for example in _circuit_to_examples(circ, label_convert):
+                train_writer.write(example.SerializeToString())
     
     with tf.io.TFRecordWriter(val_path) as val_writer:
         for circ in circuits[num_train:]:
-            val_writer.write(_circuit_to_example(circ, label_convert).SerializeToString())
+            for example in _circuit_to_examples(circ, label_convert):
+                val_writer.write(example.SerializeToString())
 
 def inspect_record(path, num):
     dataset = tf.data.TFRecordDataset(path)

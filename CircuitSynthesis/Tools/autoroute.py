@@ -288,7 +288,7 @@ def main():
     from .export_tfrecords import export_circuits, export_label_map
 
     circuits = []
-    for i in range(100):
+    for i in range(10):
         unload_cmp = import_components('./exported_data/data.json')
 
         #start_time = time.perf_counter()
@@ -327,4 +327,4 @@ def main():
 if __name__ == '__main__':
     from .export_tfrecords import inspect_record
     main()
-    inspect_record('ObjectDetection/data/train.tfrecord', 2)
+    inspect_record('ObjectDetection/data/train.tfrecord', 5)
