@@ -9,7 +9,13 @@ from Tools.autoroute import *
 import random
 import numpy as np
 
-def bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
+DROP_LINE_PERCENTAGE = 0.2
+PART_COUNT_MU = 20 #mü is the amount of average parts
+PART_COUNT_SIGMA = 5 #sigma is standart deviation
+MAX_GRIDSIZE_OFFSET = 25
+
+
+def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     cmps = []
 
     for i in range(4):
@@ -48,76 +54,64 @@ def bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     compList.append(CirCmp("knot", None, None))
     #compute knots
 
-def starcircuit(compList: List[Tuple], conList: List[Tuple]):
-    pass
-def deltacircuit(compList: List[Tuple], conList: List[Tuple]):
-    pass
-def hBridge(compList: List[Tuple], conList: List[Tuple]):
-    pass
+def augment(component: Component):
+    #rotate
+    #flip
+    allowed = ["C", "D", "C_P", "D_S", "D_Z", "L", "LED", "L", "R"]
+    if component.type in allowed:
+           
+
 
 def main():
     components = pd.import_components('./exported_data/data.json')
-    mu = 20 #mü is the amount of average parts
-    sigma = 5 #sigma is standart deviation
-
-    partamount = int(np.random.normal(mu, sigma, 1))
+    
+    partamount = int(np.random.normal(PART_COUNT_MU, PART_COUNT_SIGMA, 1))
     partcount = 0
     if partamount < 3:
         partamount = 3
 
-    # randomly select if it should be a Component Line or SubComponent 
-    offset = ()
     gridsize = 150
-    #newBounding
     pos = ()
     compList: List[CirCmp] = []
     conList :List[Tuple[CirCmp, Pin, CirCmp, Pin]] = []
     unsatisfiedList = [] # sollte durch statisches array ersretzt werden
-    #set the components
-    rancols = random.randint(5, 10)
+    #randomly define colums and rows
+    rancols = random.randint(3, 7)
     ranrows = math.ceil(partamount / rancols)
     for i in range(rancols):
         for j in range(ranrows):
             componentSize = int(random.randint(64,128))
             pos = (
-            i * gridsize + random.randint(-25, 25),
-            j * gridsize + random.randint(-25, 25))
+            j * gridsize + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET),#X
+            i * gridsize + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET))#Y
 
             random_type = random.sample(components.keys(), k=1)[0]
             cmp = random.sample(components[random_type], k=1)[0]
 
-            cmp = cmp.load()  
+            cmp = cmp.load()
+
+
+
             cmp.scale(componentSize / np.max(cmp.component_img.shape))
-            cmp.rotate(random.randint(-5,5))
+            
 
             newEntry = CirCmp(random_type, cmp, pos)
             compList.append(newEntry)
 
-
     for i in range(partamount):
-        if len([*compList[i].cmp.pins.values()]) == 3:
-            unsatisfiedList.append((i, 2))#third pin
-        elif len([*compList[i].cmp.pins.values()]) == 1:
-             unsatisfiedList.append((i, 0))#thirst pin
+        if len([*compList[i - 1].cmp.pins.values()]) == 3:
+            unsatisfiedList.append((i - 1, 2))#third pin
+        elif len([*compList[i - 1].cmp.pins.values()]) == 1:
+             unsatisfiedList.append((i - 1, 0))#thirst pin
         else:
-            print(i)
             conList.append((
+               compList[i - 1],
+               [*compList[i - 1].cmp.pins.values()][1],
                compList[i],
-               [*compList[i].cmp.pins.values()][1],
-               compList[i + 1],
-               [*compList[i + 1].cmp.pins.values()][0]
+               [*compList[i].cmp.pins.values()][0]
             ))
-    conList.append((
-               compList[0],
-               [*compList[0].cmp.pins.values()][1],
-               compList[-1],
-               [*compList[-1].cmp.pins.values()][0]
-    ))
 
-    print(len(unsatisfiedList))
     for i in range(len(unsatisfiedList)):
-        print("Test")
-        print(unsatisfiedList[i][0])
         conList.append((
               compList[unsatisfiedList[i - 1][0]],
               [*compList[unsatisfiedList[i - 1][0]].cmp.pins.values()][unsatisfiedList[i - 1][1]],
@@ -125,13 +119,11 @@ def main():
               [*compList[unsatisfiedList[i][0]].cmp.pins.values()][unsatisfiedList[i][1]]
             ))
 
-        
-    print(len(conList)) 
-    print(partamount)
-    print(rancols)
-    print(ranrows)
-    cv2.imshow("reset",draw_routed_circuit(route(compList, conList)))
+    conList = random.sample(conList, int(len(conList) * ( 1 - DROP_LINE_PERCENTAGE)))
+
+    cv2.imshow("reset",draw_routed_circuit(route(compList, conList),True))
     cv2.waitKey(0)
+
 
 if __name__ == '__main__':
     main()
