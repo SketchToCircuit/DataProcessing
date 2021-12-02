@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Tuple, List
 
 from cv2 import waitKey
+from Tools.export_tfrecords import export_circuits, export_label_map, inspect_record
 import Tools.PinDetection.pindetection as pd
 from Tools.squigglylines import * 
 from Tools.autoroute import *
@@ -14,6 +15,8 @@ PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 MAX_GRIDSIZE_OFFSET = 25
 
+NUM_FILES = 10
+CIRCUITS_PER_FILE = 1000
 
 def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     cmps = []
@@ -54,19 +57,17 @@ def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos)
     compList.append(CirCmp("knot", None, None))
     #compute knots
 
-def augment(component: Component):
+def _augment(component: Component):
     #rotate
     #flip
     allowed = ["C", "D", "C_P", "D_S", "D_Z", "L", "LED", "L", "R"]
     if component.type in allowed:
-           
+        pass
 
-
-def main():
+def _create_circuit():
     components = pd.import_components('./exported_data/data.json')
     
     partamount = int(np.random.normal(PART_COUNT_MU, PART_COUNT_SIGMA, 1))
-    partcount = 0
     if partamount < 3:
         partamount = 3
 
@@ -89,12 +90,8 @@ def main():
             cmp = random.sample(components[random_type], k=1)[0]
 
             cmp = cmp.load()
-
-
-
             cmp.scale(componentSize / np.max(cmp.component_img.shape))
             
-
             newEntry = CirCmp(random_type, cmp, pos)
             compList.append(newEntry)
 
@@ -121,9 +118,18 @@ def main():
 
     conList = random.sample(conList, int(len(conList) * ( 1 - DROP_LINE_PERCENTAGE)))
 
-    cv2.imshow("reset",draw_routed_circuit(route(compList, conList),True))
-    cv2.waitKey(0)
-
+    return(route(compList, conList))
 
 if __name__ == '__main__':
-    main()
+    export_label_map('ObjectDetection/data/label_map.pbtxt')
+
+    for f in range(NUM_FILES):
+        cirucits: List[RoutedCircuit] = [None] * CIRCUITS_PER_FILE
+        
+        for i in range(CIRCUITS_PER_FILE):
+            cirucits[i] = _create_circuit()
+        
+        if f == 0:
+            export_circuits(cirucits, f'ObjectDetection/data/train-{f}.tfrecord', 'ObjectDetection/data/val.tfrecord', val_split=0.2)
+        else:
+            export_circuits(cirucits, f'ObjectDetection/data/train-{f}.tfrecord', '', val_split=0)

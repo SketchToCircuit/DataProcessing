@@ -1,46 +1,38 @@
 item {
-	id: 15
-	name: "l2"
-}
-item {
-	id: 10
-	name: "microphone"
-}
-item {
 	id: 3
 	name: "button"
 }
 item {
-	id: 5
-	name: "diode"
-}
-item {
-	id: 8
-	name: "transistor"
-}
-item {
-	id: 12
-	name: "pin"
-}
-item {
-	id: 11
-	name: "opv"
+	id: 9
+	name: "coil"
 }
 item {
 	id: 16
 	name: "buttond"
 }
 item {
-	id: 2
-	name: "battery"
-}
-item {
 	id: 4
 	name: "capacitor"
 }
 item {
-	id: 9
-	name: "coil"
+	id: 12
+	name: "pin"
+}
+item {
+	id: 6
+	name: "resistor"
+}
+item {
+	id: 10
+	name: "microphone"
+}
+item {
+	id: 1
+	name: "circle"
+}
+item {
+	id: 8
+	name: "transistor"
 }
 item {
 	id: 13
@@ -51,14 +43,22 @@ item {
 	name: "speaker"
 }
 item {
+	id: 5
+	name: "diode"
+}
+item {
+	id: 2
+	name: "battery"
+}
+item {
 	id: 7
 	name: "ground"
 }
 item {
-	id: 1
-	name: "circle"
+	id: 15
+	name: "l2"
 }
 item {
-	id: 6
-	name: "resistor"
+	id: 11
+	name: "opv"
 }

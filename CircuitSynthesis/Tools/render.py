@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 
 from .autoroute import Knot, ConnLine, RoutedCircuit, CirCmp
+from .augment import augment_cmp_img
 
 def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
     images: List[np.ndarray] = []
@@ -10,7 +11,7 @@ def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
     sizes = []
 
     for cmp in circuit.components:
-        images.append(cmp.cmp.component_img)
+        images.append(augment_cmp_img(cmp.cmp.component_img))
         positions.append(cmp.pos)
         sizes.append(cmp.cmp.component_img.shape[1::-1])
 

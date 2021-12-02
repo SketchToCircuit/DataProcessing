@@ -98,10 +98,11 @@ def export_circuits(circuits: List[RoutedCircuit], train_path, val_path, val_spl
             for example in _circuit_to_examples(circ, label_convert):
                 train_writer.write(example.SerializeToString())
     
-    with tf.io.TFRecordWriter(val_path) as val_writer:
-        for circ in circuits[num_train:]:
-            for example in _circuit_to_examples(circ, label_convert):
-                val_writer.write(example.SerializeToString())
+    if num_train < len(circuits):
+        with tf.io.TFRecordWriter(val_path) as val_writer:
+            for circ in circuits[num_train:]:
+                for example in _circuit_to_examples(circ, label_convert):
+                    val_writer.write(example.SerializeToString())
 
 def inspect_record(path, num):
     dataset = tf.data.TFRecordDataset(path)

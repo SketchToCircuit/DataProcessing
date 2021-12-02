@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from CircuitSynthesis.Tools.squigglylines import Lines
+from .squigglylines import Lines
 from .autoroute import CirCmp, RoutedCircuit
 
 import numpy as np
@@ -17,7 +17,6 @@ def split_circuit(bboxs: List[Tuple[float, float, float, float]], img: np.ndarra
     size = np.array(img.shape)[::-1]
 
     if np.all(size < SUB_SIZE):
-        print('No splitting')
         return [(bboxs, img)]
 
     num_subs_x = 2
