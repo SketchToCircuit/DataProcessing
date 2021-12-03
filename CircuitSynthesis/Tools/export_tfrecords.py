@@ -35,9 +35,6 @@ def export_label_map(dest_path, src_path: str = 'ObjectDetection/fine_to_coarse_
         for name, id in set(fine_to_coarse.values()):
             f.write(f'item {{\n\tid: {int(id)}\n\tname: "{name}"\n}}\n')
 
-def _point_in_img(x, y, w, h):
-    return x > 0 and x < w and y > 0 and y < h
-
 def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str, int]]):
     img = draw_routed_circuit(circ, labels=True)
 
@@ -45,7 +42,7 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
     
     tf_label_and_data = []
 
-    for bboxs, img in split_circuit(bboxs, img):
+    for new_bboxs, indices, img in split_circuit(bboxs, img):
         encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
         img_h, img_w = img.shape
 
@@ -56,17 +53,13 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
         types = []
         ids = []
 
-        for i, bbox in enumerate(bboxs):
-            if _point_in_img(bbox[0], bbox[1], img_w, img_h) or \
-            _point_in_img(bbox[2], bbox[3], img_w, img_h) or \
-            _point_in_img(bbox[0], bbox[3], img_w, img_h) or \
-            _point_in_img(bbox[2], bbox[1], img_w, img_h):
-                types.append(label_convert[circ.components[i].type_id][0].encode('utf8'))
-                ids.append(label_convert[circ.components[i].type_id][1])
-                xmins.append(np.clip(bbox[0] / img_w, 0, 1))
-                ymins.append(np.clip(bbox[1] / img_h, 0, 1))
-                xmaxs.append(np.clip(bbox[2] / img_w, 0, 1))
-                ymaxs.append(np.clip(bbox[3] / img_h, 0, 1))
+        for bbox, i in zip(new_bboxs, indices):
+            types.append(label_convert[circ.components[i].type_id][0].encode('utf8'))
+            ids.append(label_convert[circ.components[i].type_id][1])
+            xmins.append(bbox[0])
+            ymins.append(bbox[1])
+            xmaxs.append(bbox[2])
+            ymaxs.append(bbox[3])
 
         tf_label_and_data.append(tf.train.Example(features=tf.train.Features(feature={
             'image/height': int64_feature(img_h),
@@ -127,7 +120,9 @@ def inspect_record(path, num):
         img = tf.io.decode_jpeg(example['image/encoded']).numpy()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-        for xmin, xmax, ymin, ymax, text, label in zip(example['image/object/bbox/xmin'].values.numpy(), example['image/object/bbox/xmax'].values.numpy(), example['image/object/bbox/ymin'].values.numpy(), example['image/object/bbox/ymax'].values.numpy(), example['image/object/class/text'].values.numpy(), example['image/object/class/label'].values.numpy()):
+        objects = zip(example['image/object/bbox/xmin'].values.numpy(), example['image/object/bbox/xmax'].values.numpy(), example['image/object/bbox/ymin'].values.numpy(), example['image/object/bbox/ymax'].values.numpy(), example['image/object/class/text'].values.numpy(), example['image/object/class/label'].values.numpy())
+
+        for xmin, xmax, ymin, ymax, text, label in objects:
             xmin *= img.shape[1]
             ymin *= img.shape[0]
             xmax *= img.shape[1]
