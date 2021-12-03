@@ -1,74 +1,53 @@
-
+import cv2
+import tensorflow as tf
 import numpy as np
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+import json
+import config
 
-import tensorflow as tf
-from tensorflow._api.v2 import data
-import tensorflow.keras.layers as layers
-import createDS
-
-physical_devices = tf.config.list_physical_devices("GPU")
-if len(physical_devices) <= 0:
-    print("No GPU detected!")
-
-#ToDo:
-# -> DataSet pipeline
-#   -> Import Arrays into DataSet
-#       -> Load all pictures on runtime ?without augmentation?
-#           -> Read images
-#           -> Read position data from json
-#   -> Data augmentation
-#       -> Resize image with padding ?and save scale?
-#       -> Rotate image
-#           -> same
-#       -> ?random noise over picture?
-#       -> Noise on hint input
-#       -> False positives on hint input
-# -> Change to predict connections
-#   -> Change NN to 2 inputs and 2 outputs
-#   -> Change loss function for the second output (y+x^2)
-#   ->  ?
-
-BATCH_SIZE = 60
-IMG_SIZE = 128
-EPOCHS = 10
+np.set_printoptions(precision=4)
 
 def main():
-    dataset = createDS.GetDataSet()
-    model = getModel()
-    dataset = dataset.batch(32)
-#    keras.utils.plot_model(
-#        model
-#    )
-    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    model.fit(dataset, epochs=EPOCHS)
+    dataSet = tf.data.Dataset.from_generator(jsonGenerator, output_types=(tf.string, tf.int32, tf.int32, tf.double))
+    dataSet = dataSet.map(loadImage).map(dataProc)
+    # for img, hint, label, pins in dataSet.take(20):
+    #     print(img)
+    #     img = img.numpy()*255
+    #     cv2.imwrite("test.png", img)
 
+def dataProc(img, pins, label, hint):
+    img = tf.cast(tf.bitwise.invert(img), dtype=tf.int32)
+    img = tf.cast(tf.image.resize_with_pad(img,config.IMG_SIZE, config.IMG_SIZE), dtype=tf.int32)
+    white = tf.ones((config.IMG_SIZE, config.IMG_SIZE, 1), dtype=tf.int32)*255
+    img = tf.subtract(white, img)
+    img = img/255
 
+    return img, pins, label, hint
 
-def getModel():
-    input1 = tf.keras.Input(shape=(16), name='input1')
-    input2 = tf.keras.Input(shape=(128,128,1), name='input2')
+def loadImage(filepath, hint, label, pins):
+    img = tf.io.read_file(filepath)
+    img = tf.image.decode_png(img)
 
-    y = layers.Conv2D(64, 3, activation='relu')(input2)
-    y = layers.Conv2D(32, 3, activation='relu')(y)
-    y = layers.MaxPool2D()(y)
-    y = layers.Flatten()(y)
-    y = layers.Dense(128, activation='relu')(y)
+    label = tf.one_hot(label, len(config.CATEGORIES), dtype=tf.int32)
+    hint = tf.one_hot(hint, len(config.HINTS), dtype=tf.int32)
 
-    x = layers.Dense(128, activation='relu')(input1)
-    x = layers.Dense(64 , activation='relu')(x)
-    x = layers.Dense(32 , activation='relu')(x)
+    return img, pins, label, hint
 
-    z = layers.Concatenate()([x, y])
-    z = layers.Dense(128, activation='relu')(z)
-    h = layers.Dense(128, activation='relu')(z)
-
-    z = layers.Dense(46, activation='softmax', name='output1')(z)
-    h = layers.Dense(6, activation='relu', name='output2')(h)
-
-    model = tf.keras.Model(inputs = [input1, input2], outputs = [z, h], name='predict')
-    return model
+def jsonGenerator():
+    data = json.load(open(config.DATAJSONPATH))
+    for component in data:
+        for entry in data[component]:
+            cmpPath = os.path.realpath(os.path.join(os.path.dirname(__file__), '..',entry["component_path"]))
+            label = config.CATEGORIES.index(entry["type"])
+            hint = config.HINTS.index(config.COMPONENTS[entry["type"]])
+            pins = [[-1,-1],[-1,-1],[-1,-1]]
+            count = 0
+            for pinNmbr in entry["pins"]:
+                pins[count][0] = entry["pins"][pinNmbr]["position"][0]
+                pins[count][1] = entry["pins"][pinNmbr]["position"][1]
+                count = count + 1
+            pins = pins[0][0],pins[0][1],pins[1][0],pins[1][1],pins[2][0],pins[2][1]
+            yield cmpPath, hint, label, pins
 
 if __name__ == '__main__':
     main()
