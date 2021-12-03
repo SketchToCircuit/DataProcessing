@@ -19,7 +19,7 @@ if len(physical_devices) > 0:
 else:
     print("No GPU detected!")
 
-def _parse_fine_to_coarse(path: str = 'ObjectDetection/fine_to_coarse_labels.txt'):
+def _parse_fine_to_coarse(path: str = './DataProcessingObjectDetection/fine_to_coarse_labels.txt'):
     convert_dict = {}
     with open(path, 'r') as f:
         for l in f:
@@ -85,11 +85,11 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
 
     return tf_label_and_data
 
-def export_circuits(circuits: List[RoutedCircuit], train_path, val_path, val_split: float = 0.2):
+def export_circuits(circuits: List[RoutedCircuit], train_path, val_path, fine_coarse_path = './DataProcessingObjectDetection/fine_to_coarse_labels.txt', val_split: float = 0.2):
     '''Export a list of RoutedCircuit to a train and validation TFRecord file usable by the tensorflow object detection API.'''
     random.shuffle(circuits)
 
-    label_convert = _parse_fine_to_coarse()
+    label_convert = _parse_fine_to_coarse(fine_coarse_path)
 
     num_train = int(len(circuits) * (1 - val_split))
 

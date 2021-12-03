@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, List
+from typing import Dict, Tuple, List
 
 from cv2 import waitKey
 from Tools.export_tfrecords import export_circuits, export_label_map, inspect_record
@@ -64,9 +64,7 @@ def _augment(component: Component):
     if component.type in allowed:
         pass
 
-def _create_circuit():
-    components = pd.import_components('./exported_data/data.json')
-    
+def _create_circuit(components: Dict[str, pd.UnloadedComponent]):
     partamount = int(np.random.normal(PART_COUNT_MU, PART_COUNT_SIGMA, 1))
     if partamount < 3:
         partamount = 3
@@ -121,15 +119,17 @@ def _create_circuit():
     return(route(compList, conList))
 
 if __name__ == '__main__':
-    export_label_map('ObjectDetection/data/label_map.pbtxt')
+    export_label_map('./DataProcessing/ObjectDetection/data/label_map.pbtxt', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
+
+    components = pd.import_components('./DataProcessing/pindetection_data/data.json')
 
     for f in range(NUM_FILES):
         cirucits: List[RoutedCircuit] = [None] * CIRCUITS_PER_FILE
         
         for i in range(CIRCUITS_PER_FILE):
-            cirucits[i] = _create_circuit()
+            cirucits[i] = _create_circuit(components)
         
         if f == 0:
-            export_circuits(cirucits, f'ObjectDetection/data/train-{f}.tfrecord', 'ObjectDetection/data/val.tfrecord', val_split=0.2)
+            export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', './DataProcessing/ObjectDetection/data/val.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt', val_split=0.2)
         else:
-            export_circuits(cirucits, f'ObjectDetection/data/train-{f}.tfrecord', '', val_split=0)
+            export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', '', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt', val_split=0)

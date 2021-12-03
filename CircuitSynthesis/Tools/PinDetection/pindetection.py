@@ -266,8 +266,6 @@ def export_all(src_path, dest_path):
                     print('Error with file: ' + file)
                     continue
 
-                print("Ok: " + file)
-
                 dest_folder = os.path.join(dest_path, cmp.type)
 
                 if not os.path.exists(dest_folder):
@@ -294,6 +292,3 @@ def export_all(src_path, dest_path):
 
     with open(os.path.join(dest_path, 'data.json'), 'w') as f:
         json.dump(all_json, f)
-
-if __name__ == '__main__':
-    export_all('../data/saved', './exported_data')
