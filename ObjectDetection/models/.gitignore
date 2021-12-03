@@ -1,4 +1,5 @@
 #ignore logs and checkpoints
 train/
+eval/
 checkpoint*
 ckpt*
