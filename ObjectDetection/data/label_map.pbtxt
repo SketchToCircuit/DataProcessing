@@ -3,24 +3,40 @@ item {
 	name: "l2"
 }
 item {
-	id: 9
-	name: "coil"
+	id: 13
+	name: "potentiometer"
 }
 item {
-	id: 1
-	name: "circle"
+	id: 2
+	name: "battery"
 }
 item {
-	id: 14
-	name: "speaker"
+	id: 4
+	name: "capacitor"
+}
+item {
+	id: 8
+	name: "transistor"
+}
+item {
+	id: 5
+	name: "diode"
+}
+item {
+	id: 6
+	name: "resistor"
+}
+item {
+	id: 3
+	name: "button"
 }
 item {
 	id: 7
 	name: "ground"
 }
 item {
-	id: 4
-	name: "capacitor"
+	id: 9
+	name: "coil"
 }
 item {
 	id: 10
@@ -31,34 +47,18 @@ item {
 	name: "buttond"
 }
 item {
-	id: 12
-	name: "pin"
-}
-item {
-	id: 2
-	name: "battery"
-}
-item {
-	id: 6
-	name: "resistor"
-}
-item {
 	id: 11
 	name: "opv"
 }
 item {
-	id: 5
-	name: "diode"
+	id: 14
+	name: "speaker"
 }
 item {
-	id: 3
-	name: "button"
+	id: 12
+	name: "pin"
 }
 item {
-	id: 13
-	name: "potentiometer"
-}
-item {
-	id: 8
-	name: "transistor"
+	id: 1
+	name: "circle"
 }

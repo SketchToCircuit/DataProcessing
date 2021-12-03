@@ -50,7 +50,7 @@ train_config {
 train_input_reader: {
   label_map_path: "./ObjectDetection/data/label_map.pbtxt"
   tf_record_input_reader {
-    input_path: "./ObjectDetection/data/train.tfrecord"
+    input_path: "./ObjectDetection/data/train-*.tfrecord"
   }
 }
   
