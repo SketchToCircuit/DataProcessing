@@ -4,3 +4,5 @@ upgrade pip before installation
 
 maybe this fix is needed:
 https://github.com/tensorflow/models/issues/9706
+
+numpy version 1.21.4 worked: pip install --upgrade numpy=1.21.4

@@ -36,7 +36,7 @@ train_config {
     }
   }
   
-  fine_tune_checkpoint: "./ObjectDetection/pretrained_models/efficientdet_d2/checkpoint/ckpt-0"
+  fine_tune_checkpoint: "./pretrained_models/efficientdet_d2/checkpoint/ckpt-0"
   num_steps: 300000
   startup_delay_steps: 0.0
   replicas_to_aggregate: 8
@@ -48,9 +48,9 @@ train_config {
 }
   
 train_input_reader: {
-  label_map_path: "./ObjectDetection/data/label_map.pbtxt"
+  label_map_path: "./data/label_map.pbtxt"
   tf_record_input_reader {
-    input_path: "./ObjectDetection/data/train-*.tfrecord"
+    input_path: "./data/train-*.tfrecord"
   }
 }
   
@@ -61,11 +61,11 @@ eval_config: {
 }
   
 eval_input_reader: {
-  label_map_path: "./ObjectDetection/data/label_map.pbtxt"
+  label_map_path: "./data/label_map.pbtxt"
   shuffle: false
   num_epochs: 1
   tf_record_input_reader {
-    input_path: "./ObjectDetection/data/val.tfrecord"
+    input_path: "./data/val.tfrecord"
   }
 }
   
