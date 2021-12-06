@@ -43,7 +43,7 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
     tf_label_and_data = []
 
     for new_bboxs, indices, img in split_circuit(bboxs, img):
-        encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR).astype(float) / 255.0).numpy()
+        encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
         img_h, img_w = img.shape
 
         xmins = []
