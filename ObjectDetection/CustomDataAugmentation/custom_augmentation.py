@@ -75,7 +75,7 @@ def augment(image, boxes):
                         lambda: erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)), # between 1 and 5 pixels erosion (thicker)
                         lambda: dilate(image, tf.random.uniform(shape=[], minval=1, maxval=2, dtype=tf.int64))), # either 1 or 2 pixels thinner
                     lambda: image)
-    return (image, boxes)
+    return tf.ensure_shape(image, [None, None, 3]), boxes
 
 # for eagerly testing the augmentation on *.tfrecord
 def test(path: str, num_samples: int):
