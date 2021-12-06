@@ -14,6 +14,10 @@ def threshold(img):
     return tf.where(img < 200, 0.0, 255.0)
 
 @tf.function
+def contrast_boost(img):
+    return tf.clip_by_value(tf.image.adjust_contrast(img, tf.random.uniform(shape=[], minval=1.5, maxval=3.0)), 0.0, 255.0)
+
+@tf.function
 def dilate(img, size):
     # https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation
     # image needs another dimension for a batchszie of 1
@@ -59,11 +63,15 @@ def augment(image, boxes):
     image: Tensor("", shape=(None, None, 3), dtype=float32) with values in [0, 255]
     boxes: Tensor("", shape=(None, 4), dtype=float32) every item is in form of [ymin, xmin, ymax, xmax]
     '''
-    image = threshold(image) # always binarize image
+
+    # 70% contrast boosting or 30% threshold
+    image = tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.7,
+                    lambda: contrast_boost(image),
+                    lambda: threshold(image))
 
     # 50% dilation or erotion
     image = tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.5,
-            	    lambda: tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.7, # 80% erosion, 20% dilation
+            	    lambda: tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.7, # 70% erosion, 30% dilation
                         lambda: erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)), # between 1 and 5 pixels erosion (thicker)
                         lambda: dilate(image, tf.random.uniform(shape=[], minval=1, maxval=2, dtype=tf.int64))), # either 1 or 2 pixels thinner
                     lambda: image)
