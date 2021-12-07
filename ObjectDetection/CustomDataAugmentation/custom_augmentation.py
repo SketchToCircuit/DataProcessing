@@ -1,23 +1,19 @@
 import os
 
-from tensorflow._api.v2 import data
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import tensorflow as tf
 import cv2
 import numpy as np
 import math
+import random
 
-@tf.function
 def threshold(img):
     return tf.where(img < 200, 0.0, 255.0)
 
-@tf.function
 def contrast_boost(img):
     return tf.clip_by_value(tf.image.adjust_contrast(img, tf.random.uniform(shape=[], minval=1.5, maxval=3.0)), 0.0, 255.0)
 
-@tf.function
 def dilate(img, size):
     # https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation
     # image needs another dimension for a batchszie of 1
@@ -28,7 +24,7 @@ def dilate(img, size):
     size = tf.clip_by_value(size, 1, 10)
     size = tf.repeat(size, 2)
     size = tf.pad(size, paddings=tf.constant([[0, 1]]), constant_values=3)
-    kernel = tf.zeros(size, dtype=tf.float32)
+    kernel = tf.ensure_shape(tf.zeros(size, dtype=tf.float32), [None, None, 3])
 
     img = tf.nn.dilation2d(img, filters=kernel, strides=(1,1,1,1), dilations=(1,1,1,1), padding="SAME", data_format="NHWC")
 
@@ -37,7 +33,6 @@ def dilate(img, size):
 
     return img
 
-@tf.function
 def erode(img, size):
     # https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation
     # image needs another dimension for a batchszie of 1
@@ -48,7 +43,7 @@ def erode(img, size):
     size = tf.clip_by_value(size, 1, 10)
     size = tf.repeat(size, 2)
     size = tf.pad(size, paddings=tf.constant([[0, 1]]), constant_values=3)
-    kernel = tf.zeros(size, dtype=tf.float32)
+    kernel = tf.ensure_shape(tf.zeros(size, dtype=tf.float32), [None, None, 3])
 
     img = tf.nn.erosion2d(img, filters=kernel, strides=(1,1,1,1), dilations=(1,1,1,1), padding="SAME", data_format="NHWC")
 
@@ -57,25 +52,28 @@ def erode(img, size):
 
     return img
 
-@tf.function
 def augment(image, boxes):
     '''
     image: Tensor("", shape=(None, None, 3), dtype=float32) with values in [0, 255]
-    boxes: Tensor("", shape=(None, 4), dtype=float32) every item is in form of [ymin, xmin, ymax, xmax]
+    boxes: Tensor("", shape=(None, 4), dtype=float32) every item is in form of [ymin, xmin, ymax, xmax] where the coordinates are in [0, 1] (normalized to image size)
     '''
+    image = tf.ensure_shape(image, [None, None, 3])
 
     # 70% contrast boosting or 30% threshold
-    image = tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.7,
-                    lambda: contrast_boost(image),
-                    lambda: threshold(image))
+    if tf.random.uniform(shape=[], dtype=tf.float32) < 0.7:
+        image = contrast_boost(image)
+    else:
+        image = threshold(image)
 
     # 50% dilation or erotion
-    image = tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.5,
-            	    lambda: tf.cond(tf.random.uniform(shape=[], dtype=tf.float32) < 0.7, # 70% erosion, 30% dilation
-                        lambda: erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)), # between 1 and 5 pixels erosion (thicker)
-                        lambda: dilate(image, tf.random.uniform(shape=[], minval=1, maxval=2, dtype=tf.int64))), # either 1 or 2 pixels thinner
-                    lambda: image)
-    return tf.ensure_shape(image, [None, None, 3]), boxes
+    if tf.random.uniform(shape=[], dtype=tf.float32) < 0.5:
+        # 80% erosion, 20% dilation
+        if tf.random.uniform(shape=[], dtype=tf.float32) < 0.8:
+            image = erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)) # between 1 and 5 (inclusive) for erosion (thicker)
+        else:
+            image = dilate(image, 2) # kernel size for dilation (smaller) is always 2
+
+    return image, boxes
 
 # for eagerly testing the augmentation on *.tfrecord
 def test(path: str, num_samples: int):
