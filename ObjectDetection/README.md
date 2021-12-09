@@ -6,3 +6,8 @@ maybe this fix is needed:
 https://github.com/tensorflow/models/issues/9706
 
 numpy version 1.21.4 worked: pip install --upgrade numpy=1.21.4
+
+protc error: https://stackoverflow.com/questions/45708443/tensorflow-object-detection-module-error-appear-when-trying-to-use-protoc
+
+Update:
+pip install mit --no-deps --upgrade

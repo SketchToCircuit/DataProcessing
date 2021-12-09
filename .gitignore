@@ -112,7 +112,3 @@ ExportData/Data/
 __pycache__/
 *.pyc
 *.pyo
-
-# Custom Data Augmentation -> is in TensorFlow models fork
-CustomDataAugmentation/
-CustomDataAugmentation
