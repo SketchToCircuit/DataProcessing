@@ -3,6 +3,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 import cv2
 import numpy as np
 import math
@@ -52,6 +53,20 @@ def erode(img, size):
 
     return img
 
+def warp_random(img, strength):
+    # https://www.tensorflow.org/addons/tutorials/image_ops#dense_image_warp
+    img = tf.expand_dims(img, 0)
+    img_dims = tf.slice(tf.shape(img), [0], [3])
+    flow_shape = tf.concat([img_dims, tf.constant([2])], 0)
+    # flow shape is no a tensor with the values [1, height, width, 2]
+    rand_flow = tf.random.normal(flow_shape, stddev=strength) # standard devaition = strength of effect
+    img = tfa.image.dense_image_warp(img, rand_flow)
+    return tf.squeeze(img, 0)
+
+def warp_sinusoidal(img, strength):
+    #TODO
+    return img
+
 @tf.function
 def augment(image, boxes):
     '''
@@ -61,19 +76,27 @@ def augment(image, boxes):
     image = tf.ensure_shape(image, [None, None, 3])
 
     # 70% contrast boosting or 30% threshold
-    if tf.random.uniform(shape=[], dtype=tf.float32) < 0.7:
+    if tf.random.uniform([]) < 0.7:
         image = contrast_boost(image)
     else:
         image = threshold(image)
 
-    # 50% dilation or erotion
-    if tf.random.uniform(shape=[], dtype=tf.float32) < 0.5:
-        # 80% erosion, 20% dilation
-        if tf.random.uniform(shape=[], dtype=tf.float32) < 0.8:
+    # 50% dilation or erosion
+    if tf.random.uniform([]) < 0.5:
+        # 90% erosion, 10% dilation
+        if tf.random.uniform([]) < 0.9:
             image = erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)) # between 1 and 5 (inclusive) for erosion (thicker)
         else:
             image = dilate(image, 2) # kernel size for dilation (smaller) is always 2
 
+    # 30% image warping
+    if tf.random.uniform([]) < 0.3:
+        # 50% random (normal distributed) warping
+        if tf.random.uniform([]) < 0.5:
+            image = warp_random(image, tf.random.uniform([], minval=0.2, maxval=1.5)) # random strength
+        # 50% sinusoidal warping (not implemented yet)
+        else:
+            image = warp_sinusoidal(image, tf.random.uniform([], minval=0, maxval=1)) # random strength
     return image, boxes
 
 # for eagerly testing the augmentation on *.tfrecord
