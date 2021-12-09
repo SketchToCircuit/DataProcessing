@@ -1,18 +1,26 @@
 item {
-	id: 15
-	name: "l2"
+	id: 3
+	name: "button"
 }
 item {
-	id: 13
-	name: "potentiometer"
+	id: 9
+	name: "coil"
+}
+item {
+	id: 14
+	name: "speaker"
 }
 item {
 	id: 2
 	name: "battery"
 }
 item {
-	id: 4
-	name: "capacitor"
+	id: 13
+	name: "potentiometer"
+}
+item {
+	id: 10
+	name: "microphone"
 }
 item {
 	id: 8
@@ -23,24 +31,20 @@ item {
 	name: "diode"
 }
 item {
-	id: 6
-	name: "resistor"
-}
-item {
-	id: 3
-	name: "button"
+	id: 15
+	name: "l2"
 }
 item {
 	id: 7
 	name: "ground"
 }
 item {
-	id: 9
-	name: "coil"
+	id: 4
+	name: "capacitor"
 }
 item {
-	id: 10
-	name: "microphone"
+	id: 12
+	name: "pin"
 }
 item {
 	id: 16
@@ -51,12 +55,8 @@ item {
 	name: "opv"
 }
 item {
-	id: 14
-	name: "speaker"
-}
-item {
-	id: 12
-	name: "pin"
+	id: 6
+	name: "resistor"
 }
 item {
 	id: 1

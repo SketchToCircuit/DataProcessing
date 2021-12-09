@@ -52,6 +52,7 @@ def erode(img, size):
 
     return img
 
+@tf.function
 def augment(image, boxes):
     '''
     image: Tensor("", shape=(None, None, 3), dtype=float32) with values in [0, 255]
@@ -126,4 +127,4 @@ def test(path: str, num_samples: int):
         cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    test('./ObjectDetection/data/val.tfrecord', 5)
+    test('./ObjectDetection/data/data.tfrecord', 10)
