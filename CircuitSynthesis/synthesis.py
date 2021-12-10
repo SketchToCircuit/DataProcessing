@@ -15,10 +15,10 @@ PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 MAX_GRIDSIZE_OFFSET = 25
 
-NUM_FILES = 10
+NUM_FILES = 20
 CIRCUITS_PER_FILE = 1000
 
-DEBUG = True
+DEBUG = False
 
 def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     cmps = []
@@ -132,8 +132,10 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent]):
             ))
 
     conList = random.sample(conList, int(len(conList) * ( 1 - DROP_LINE_PERCENTAGE)))
-    for key in [*components.keys()]:
-        print(key)
+
+    if DEBUG:
+        for key in [*components.keys()]:
+            print(key)
 
     return(route(compList, conList))
 
@@ -153,6 +155,9 @@ if __name__ == '__main__':
         
         for i in range(CIRCUITS_PER_FILE):
             cirucits[i] = _create_circuit(components)
+
+            if i % 200 == 0:
+                print(f'{f}:{i}')
         
         if f == 0:
             export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', './DataProcessing/ObjectDetection/data/val.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt', val_split=0.2)
