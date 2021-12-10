@@ -75,9 +75,24 @@ def _augment(component: Component):
 
     #[rotate] unalloweed are all who are Labeled on the inside and have already alternative orientations 
     if component.type not in unallowed:
-       component.rotate(random.randint(0,3)*90 + random.randint(-15,15)) 
+        rand_val = random.random()
+
+        if rand_val < 0.25:
+            # 50% random rotation
+            if random.random() < 0.5:
+                component.flip(True, True)
+            else:
+                component.rotate(180 + random.randint(-15,15)) 
+        elif rand_val < 0.5:
+            # 50% random rotation
+            if random.random() < 0.5:
+                component.rotate(random.randint(-15,15))
+        else:
+            component.rotate(random.choice([-90, 90]) + random.randint(-15,15))
     else:    
-        component.rotate(random.randint(-5,5))
+        # 50% random rotation
+        if random.random() < 0.5:
+            component.rotate(random.randint(-15,15)) 
 
 
 def _create_circuit(components: Dict[str, pd.UnloadedComponent]):
