@@ -19,7 +19,7 @@ if len(physical_devices) > 0:
 else:
     print("No GPU detected!")
 
-def _parse_fine_to_coarse(path: str = './DataProcessingObjectDetection/fine_to_coarse_labels.txt'):
+def _parse_fine_to_coarse(path: str = './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt'):
     convert_dict = {}
     with open(path, 'r') as f:
         for l in f:
