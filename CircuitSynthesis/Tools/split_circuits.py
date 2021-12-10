@@ -10,7 +10,7 @@ import math
 
 SUB_SIZE = 640
 MIN_OVERLAP = 50
-MIN_COMPONENT_AREA_REL = 0.5
+MIN_COMPONENT_AREA_REL = 0.3
 
 def split_circuit(bboxs: List[Tuple[float, float, float, float]], img: np.ndarray):
     '''
