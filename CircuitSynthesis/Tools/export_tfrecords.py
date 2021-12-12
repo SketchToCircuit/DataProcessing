@@ -78,24 +78,16 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
 
     return tf_label_and_data
 
-def export_circuits(circuits: List[RoutedCircuit], train_path, val_path, fine_coarse_path = './DataProcessingObjectDetection/fine_to_coarse_labels.txt', val_split: float = 0.2):
+def export_circuits(circuits: List[RoutedCircuit], path, fine_coarse_path = './DataProcessingObjectDetection/fine_to_coarse_labels.txt'):
     '''Export a list of RoutedCircuit to a train and validation TFRecord file usable by the tensorflow object detection API.'''
     random.shuffle(circuits)
 
     label_convert = _parse_fine_to_coarse(fine_coarse_path)
 
-    num_train = int(len(circuits) * (1 - val_split))
-
-    with tf.io.TFRecordWriter(train_path) as train_writer:
-        for circ in circuits[:num_train]:
+    with tf.io.TFRecordWriter(path) as writer:
+        for circ in circuits:
             for example in _circuit_to_examples(circ, label_convert):
-                train_writer.write(example.SerializeToString())
-    
-    if num_train < len(circuits):
-        with tf.io.TFRecordWriter(val_path) as val_writer:
-            for circ in circuits[num_train:]:
-                for example in _circuit_to_examples(circ, label_convert):
-                    val_writer.write(example.SerializeToString())
+                writer.write(example.SerializeToString())
 
 def inspect_record(path, num):
     dataset = tf.data.TFRecordDataset(path)

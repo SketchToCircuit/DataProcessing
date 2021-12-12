@@ -17,6 +17,8 @@ MAX_GRIDSIZE_OFFSET = 25
 
 NUM_FILES = 20
 CIRCUITS_PER_FILE = 1000
+VALIDATION_NUM = 500
+VAL_SRC_SPLIT = 0.1
 
 DEBUG = False
 
@@ -92,10 +94,9 @@ def _augment(component: Component):
     else:    
         # 50% random rotation
         if random.random() < 0.5:
-            component.rotate(random.randint(-15,15)) 
+            component.rotate(random.randint(-15,15))
 
-
-def _create_circuit(components: Dict[str, pd.UnloadedComponent]):
+def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=False):
     partamount = int(np.random.normal(PART_COUNT_MU, PART_COUNT_SIGMA, 1))
     if partamount < 3:
         partamount = 3
@@ -115,9 +116,16 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent]):
             j * gridsize + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET),#X
             i * gridsize + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET))#Y
 
-            random_type = random.sample(components.keys(), k=1)[0]
-            cmp = random.sample(components[random_type], k=1)[0]
+            random_type = random.choice([*components.keys()])
+            num_val = int(len(components[random_type]) * VAL_SRC_SPLIT)
 
+            if validation:
+                rand_idx = random.randint(0, num_val - 1)
+            else:
+                rand_idx = random.randint(num_val - 1, len(components[random_type]) - 1)
+            
+            cmp = components[random_type][rand_idx]
+            
             cmp = cmp.load()
             _augment(cmp)
             cmp.scale(componentSize / np.max(cmp.component_img.shape))
@@ -165,6 +173,15 @@ if __name__ == '__main__':
         cv2.waitKey(0)
         exit()
 
+    val_cirucits: List[RoutedCircuit] = [None] * VALIDATION_NUM
+    for i in range(VALIDATION_NUM):
+        val_cirucits[i] = _create_circuit(components, validation=True)
+
+        if i % 100 == 0:
+            print(f'val:{i}')
+    
+    export_circuits(val_cirucits, f'./DataProcessing/ObjectDetection/data/val.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
+
     for f in range(NUM_FILES):
         cirucits: List[RoutedCircuit] = [None] * CIRCUITS_PER_FILE
         
@@ -173,8 +190,5 @@ if __name__ == '__main__':
 
             if i % 200 == 0:
                 print(f'{f}:{i}')
-        
-        if f == 0:
-            export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', './DataProcessing/ObjectDetection/data/val.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt', val_split=0.2)
-        else:
-            export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', '', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt', val_split=0)
+
+        export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
