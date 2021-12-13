@@ -203,12 +203,14 @@ def _detect_pins(path, type):
         img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA)
         orig_img = cv2.resize(orig_img, None, fx=sf, fy=sf, interpolation=cv2.INTER_CUBIC)
 
-    lines = get_lines(img, 13, 10, 2, 17, 12)
+    lines = get_lines(img, 13, 10, 3, 15, 10)
 
     for detector in ALL_DETECTORS:
         if detector.match(type):
             try:
                 pins = detector.get_pins(lines, centroid, np.array(img.shape))
+                for k in pins.keys():
+                    pins[k].position = np.clip(pins[k].position, [0, 0], [img.shape[1], img.shape[0]])
                 return orig_img, pins, detector.NAME, {'bounds': (minx + cropp[2], maxx + cropp[3], miny + cropp[0], maxy + cropp[1]), 'sf': sf}
             except Exception:
                 print("Detection not successful: " + traceback.format_exc())

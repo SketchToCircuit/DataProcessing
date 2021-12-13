@@ -205,27 +205,6 @@ def _route_single_components(components: List[CirCmp], connection: Tuple[CirCmp,
     pos_a = connection[0].pos
     pos_b = connection[2].pos
 
-    direct_line = False
-
-    # if at least one pin is angled ~45°, make a direct connection -> allow bridge rectifier
-    if connection[1]:
-        k = abs(connection[1].direction[1]) / (abs(connection[1].direction[0]) + 0.0001)
-        if k < 2.4 and k > 0.4:
-            # angle (mapped to first quadrant) in [22.5°; 67.5°]
-            direct_line = True
-            pos_a = connection[1].position + connection[0].pos
-
-    if connection[3]:
-        k = abs(connection[3].direction[1]) / (abs(connection[3].direction[0]) + 0.0001)
-        if k < 2.4 and k > 0.4:
-            # angle (mapped to first quadrant) in [22.5°; 67.5°]
-            direct_line = True
-            pos_b = connection[3].position + connection[2].pos
-
-    if direct_line:
-        conn_lines = [ConnLine(pos_a, pos_b, persistent=True)]
-        return conn_lines
-
     if connection[0].type_id != 'knot':
         # component one stud
         pos_a = connection[1].position + MIN_PIN_DIST * connection[1].direction + connection[0].pos

@@ -1,3 +1,3 @@
 from Tools.PinDetection.pindetection import export_all
 
-export_all('./data/saved', './DataProcessing/pindetection_data')
+export_all('./DataProcessing/ExportData/Data', './DataProcessing/pindetection_data_new')
