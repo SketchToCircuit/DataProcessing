@@ -1,6 +1,8 @@
 import os
 
-DATAJSONPATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "exported_data/data.json"))
+DATAJSONPATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "pindetection_data/data.json"))
+
+SAVEPATH = "/mnt/hdd2/Sketch2Circuit/DataProcessing/ComponentDetection/Pictures"
 
 IMG_SIZE = 128
 

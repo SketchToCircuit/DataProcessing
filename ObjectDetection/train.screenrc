@@ -1,0 +1,7 @@
+# don't display the copyright page
+startup_message off
+
+# create windows
+screen -t Train ./train_model.sh
+screen -t Eval ./val_model.sh
+screen -t Tensorboard ./start_tensorboard.sh
