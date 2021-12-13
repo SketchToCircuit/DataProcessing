@@ -12,7 +12,7 @@ from .PinDetection.pindetection import Component, Pin, import_components
 
 import cProfile
 
-MIN_PIN_DIST = 15
+MIN_PIN_DIST = 30
 MIN_LEN_LINE_CROSSING = 150
 
 @dataclass
