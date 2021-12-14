@@ -1,8 +1,10 @@
 import os
+from datetime import datetime 
 
 DATAJSONPATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "pindetection_data/data.json"))
 
-SAVEPATH = "/mnt/hdd2/Sketch2Circuit/DataProcessing/ComponentDetection/Pictures"
+LOGDIR = os.path.join("./PinDetection/logs/", datetime.now().strftime("%d-%m-%Y-%H-%M-%S"))
+MODELPATH = os.path.join("./PinDetection/model", "t1cp.ckpt")
 
 IMG_SIZE = 128
 
