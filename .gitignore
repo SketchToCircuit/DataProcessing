@@ -105,6 +105,9 @@ dist
 # from data export
 ExportData/Data/
 
+#PinDetection model
+PinDetection/model
+
 # VS-Code
 .vscode/
 
