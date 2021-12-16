@@ -8,17 +8,19 @@ from Tools.autoroute import *
 import random
 import numpy as np
 
-DROP_LINE_PERCENTAGE = 0.0
+DROP_LINE_PERCENTAGE = 0.4
 PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
+
 MAX_GRIDSIZE_OFFSET = 25
+GRIDSIZE = 200
 
 NUM_FILES = 20
 CIRCUITS_PER_FILE = 1000
 VALIDATION_NUM = 250
 VAL_SRC_SPLIT = 0.1
 
-DEBUG = True
+DEBUG = False
 
 def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     cmps = []
@@ -29,6 +31,7 @@ def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos)
             random_type = random.sample(components.keys(), k=1)[0]
         cmps[i] = random.sample(components[random_type], k=1)[0]
         cmps[i] = cmps.load()
+    
     cmps: List[Component]
     componentSize = int(random.randint(64,128))
     #fpos = first position = the postition of combined bounding box
@@ -59,46 +62,37 @@ def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos)
     #compute knots
 
 def _augment(component: Component):
-    #rotate
-    #flip
-    unallowed = ["A_H", "A_V", "U_AC_H", "U_AC_V", "V_H", "V_V","M","M_V","U1","U2","U3"]
-    if component.type not in unallowed:
-        if random.random() < 0.5:
-            if random.random() < 0.5:
-                component.flip(True, False)
-            else:
-                component.flip(False, True)
-    else:
-        if random.random() < 0.5:
-            component.flip(hor=True)
 
-    #[rotate] unalloweed are all who are Labeled on the inside and have already alternative orientations 
-    if component.type not in unallowed:
-        rand_val = random.random()
+    if random.random() < 0.5:
+        component.flip(vert=True)
 
-        if rand_val < 0.25:
-            # 50% random rotation
-            if random.random() < 0.5:
-                component.flip(True, True)
-            else:
-                component.rotate(180 + random.randint(-15,15)) 
-        elif rand_val < 0.5:
-            # 50% random rotation
-            if random.random() < 0.5:
-                component.rotate(random.randint(-15,15))
+    # some types have their own vertical version -> don't rotate 90°
+    both_versions = ["A_H", "A_V", "U_AC_H", "U_AC_V", "V_H", "V_V", "M", "M_V"]
+    # some types can be diagonal (45°)
+    diagonal_allowed = ["C", "C_P", "D", "D_S", "D_Z", "L", "L2", "R"]
+
+    angle = 0.0
+
+    if component.type in both_versions:
+        angle = random.choice([0.0, 180.0])
+    elif component.type in diagonal_allowed:
+        # only 10% are diagonal
+        if random.random() < 0.1:
+            angle = random.choice([45.0, -45.0, 135.0, -135.0])
         else:
-            component.rotate(random.choice([-90, 90]) + random.randint(-15,15))
-    else:    
-        # 50% random rotation
-        if random.random() < 0.5:
-            component.rotate(random.randint(-15,15))
+            angle = random.choice([0.0, 90.0, -90.0, 180.0])
+    else:
+        angle = random.choice([0.0, 90.0, -90.0, 180.0])
+    
+    angle += np.random.normal(0, 10)
+
+    component.rotate(angle)
 
 def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=False):
     partamount = int(np.random.normal(PART_COUNT_MU, PART_COUNT_SIGMA, 1))
     if partamount < 3:
         partamount = 3
 
-    gridsize = 150
     pos = ()
     compList: List[CirCmp] = []
     conList: List[Tuple[CirCmp, Pin, CirCmp, Pin]] = []
@@ -108,10 +102,9 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
     ranrows = math.ceil(partamount / rancols)
     for i in range(rancols):
         for j in range(ranrows):
-            componentSize = int(random.randint(64,128))
             pos = (
-            j * gridsize + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET),#X
-            i * gridsize + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET))#Y
+            j * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET),#X
+            i * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET))#Y
 
             random_type = random.choice([*components.keys()])
             num_val = int(len(components[random_type]) * VAL_SRC_SPLIT)
@@ -125,13 +118,16 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
             
             #Loaded components are enabled to Edit
             cmp = cmp.load()
+
+            #make some components bigger[by now only the OPV]
+            bigger = ["OPV"]
+            componentSize = int(random.randint(64,128))
+            if cmp.type in bigger:
+                cmp.scale((componentSize + 40) / np.max(cmp.component_img.shape))
+            else:
+                cmp.scale(componentSize / np.max(cmp.component_img.shape))
+
             _augment(cmp)
-            cmp.scale(componentSize / np.max(cmp.component_img.shape))
-            
-            #make some components Bigger[by now only the OPV]
-            allowed = ["OPV"]
-            if cmp.type in allowed:
-                 cmp.scale(int(random.randint(100,150)) / np.max(cmp.component_img.shape))
 
             newEntry = CirCmp(random_type, cmp, pos)
             compList.append(newEntry)
