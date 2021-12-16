@@ -9,7 +9,7 @@ import numpy as np
 from .PinDetection.pindetection import Component, Pin
 from .squigglylines import Lines
 
-PIN_LENGTHENING = 50
+PIN_LENGTHENING = 70
 MIN_LEN_LINE_CROSSING = 150
 
 @dataclass

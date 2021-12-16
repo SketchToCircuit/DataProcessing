@@ -13,7 +13,7 @@ PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 
 MAX_GRIDSIZE_OFFSET = 25
-GRIDSIZE = 200
+GRIDSIZE = 170
 
 NUM_FILES = 20
 CIRCUITS_PER_FILE = 1000
@@ -100,13 +100,18 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
     #randomly define colums and rows
     rancols = random.randint(3, 7)
     ranrows = math.ceil(partamount / rancols)
+
+    # If both versions are available -> make them half as likely to get choosen
+    both_versions = ["A_H", "A_V", "U_AC_H", "U_AC_V", "V_H", "V_V", "M", "M_V"]
+    weights = [0.5 if t in both_versions else 1.0 for t in components.keys()]
+
     for i in range(rancols):
         for j in range(ranrows):
             pos = (
             j * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET),#X
             i * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET))#Y
-
-            random_type = random.choice([*components.keys()])
+            
+            random_type = random.choices([*components.keys()], weights=weights, k=1)[0]
             num_val = int(len(components[random_type]) * VAL_SRC_SPLIT)
 
             if validation:
