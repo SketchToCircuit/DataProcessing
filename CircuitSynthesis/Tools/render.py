@@ -2,10 +2,9 @@ from typing import List, Set
 import numpy as np
 import cv2
 
-from .autoroute import Knot, ConnLine, RoutedCircuit, CirCmp
-from .augment import augment_cmp_img
+from .autoroute import RoutedCircuit
 
-COMPONENT_BORDER = 13
+COMPONENT_BORDER = 21
 
 def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
     images: List[np.ndarray] = []
@@ -17,7 +16,7 @@ def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
 
     for cmp in circuit.components:
         mask_cmps.add(len(images))
-        images.append(augment_cmp_img(cmp.cmp.component_img))
+        images.append(cmp.cmp.component_img)
         positions.append(cmp.pos)
         sizes.append(cmp.cmp.component_img.shape[::-1])
 

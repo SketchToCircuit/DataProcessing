@@ -6,8 +6,6 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 import cv2
 import numpy as np
-import math
-import random
 
 def threshold(img):
     return tf.where(img < 200, 0.0, 255.0)
