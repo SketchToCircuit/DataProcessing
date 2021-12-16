@@ -1,8 +1,6 @@
-from dataclasses import dataclass
 from typing import Dict, Tuple, List
 
-from cv2 import flip, waitKey
-from Tools.export_tfrecords import export_circuits, export_label_map, inspect_record
+from Tools.export_tfrecords import export_circuits, export_label_map
 import Tools.PinDetection.pindetection as pd
 from Tools.squigglylines import * 
 from Tools.autoroute import *
@@ -10,7 +8,7 @@ from Tools.autoroute import *
 import random
 import numpy as np
 
-DROP_LINE_PERCENTAGE = 0.2
+DROP_LINE_PERCENTAGE = 0.4
 PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 MAX_GRIDSIZE_OFFSET = 25
@@ -104,7 +102,7 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
     gridsize = 150
     pos = ()
     compList: List[CirCmp] = []
-    conList :List[Tuple[CirCmp, Pin, CirCmp, Pin]] = []
+    conList: List[Tuple[CirCmp, Pin, CirCmp, Pin]] = []
     unsatisfiedList = [] # sollte durch statisches array ersretzt werden
     #randomly define colums and rows
     rancols = random.randint(3, 7)
@@ -154,11 +152,12 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
               [*compList[unsatisfiedList[i][0]].cmp.pins.values()][unsatisfiedList[i][1]]
             ))
 
-    conList = random.sample(conList, int(len(conList) * ( 1 - DROP_LINE_PERCENTAGE)))
+    for i in range(int(len(compList) * 0.5)):
+        compList.append(CirCmp("knot", None, None))
+        conList.append((compList[-1], None, compList[i], random.choice([*compList[i].cmp.pins.values()])))
+        conList.append((compList[-1], None, compList[i * 2], random.choice([*compList[i * 2].cmp.pins.values()])))
 
-    if DEBUG:
-        for key in [*components.keys()]:
-            print(key)
+    conList = random.sample(conList, int(len(conList) * ( 1 - DROP_LINE_PERCENTAGE)))
 
     return(route(compList, conList))
 

@@ -1,8 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 import cv2
-import os
 
 def get_line_thic(img, line):
     thic = []

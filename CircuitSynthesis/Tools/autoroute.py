@@ -1,18 +1,15 @@
+import math
+import random
 from dataclasses import dataclass
 from typing import List, Tuple
-import numpy as np
+
 import cv2
-import random
-import math
+import numpy as np
 
-from numpy.random.mtrand import normal
-
+from .PinDetection.pindetection import Component, Pin
 from .squigglylines import Lines
-from .PinDetection.pindetection import Component, Pin, import_components
 
-import cProfile
-
-MIN_PIN_DIST = 30
+PIN_LENGTHENING = 50
 MIN_LEN_LINE_CROSSING = 150
 
 @dataclass
@@ -39,7 +36,7 @@ class ConnLine:
     crossing: bool = False
 
     def to_img(self):
-        thick = random.randint(1, 2)
+        thick = 1 if random.random() < 0.7 else 2
         size = np.round(np.abs(self.start - self.end)).astype(int) + thick * 8 + 20
         img = np.full(size[::-1], 255, dtype=np.uint8)
         mid = (self.start + self.end) / 2.0
@@ -71,7 +68,7 @@ class RoutedCircuit:
         self.knots = self.knots if self.knots else []
         for cmp in self.components:
             if cmp.type_id == 'knot':
-                self.knots.append(Knot(cmp.pos - 10, 10))
+                self.knots.append(Knot(cmp.pos - 5, 5))
 
         self.components[:] = [cmp for cmp in self.components if cmp.type_id != 'knot']
 
@@ -79,34 +76,6 @@ class RoutedCircuit:
         for line in self.lines:
             if np.sum(np.square(np.abs(line.end - line.start))) > MIN_LEN_LINE_CROSSING**2:
                 line.crossing = True
-    
-    def remove_occupied(self):
-        delete = []
-
-        for knot in self.knots:
-            for cmp in self.components:
-                if _point_in_component(cmp, knot.position):
-                    delete.append(True)
-                    break
-            else:
-                delete.append(False)
-
-        self.knots[:] = [k for d, k in zip(delete, self.knots) if not d]
-
-        delete = []
-
-        for line in self.lines:
-            if line.persistent:
-                delete.append(False)
-                continue
-            for cmp in self.components:
-                if _point_in_component(cmp, line.start) or _point_in_component(cmp, line.end):
-                    delete.append(True)
-                    break
-            else:
-                delete.append(False)
-
-        self.lines[:] = [l for d, l in zip(delete, self.lines) if not d]
 
 from .render import *
 
@@ -177,7 +146,7 @@ def _route_half_between_pos(pos_a: np.ndarray, pos_b: np.ndarray, no_go_dir: np.
 
     return new_line
 
-def _route_between_pos(components: List[CirCmp], pos_a: np.ndarray, pos_b: np.ndarray, no_go_dir_a: np.ndarray, no_go_dir_b: np.ndarray, conn_lines: List[ConnLine]):
+def _route_between_pos(pos_a: np.ndarray, pos_b: np.ndarray, no_go_dir_a: np.ndarray, no_go_dir_b: np.ndarray, conn_lines: List[ConnLine]):
     l_a = _route_half_between_pos(pos_a, pos_b, no_go_dir_a)
     l_b = _route_half_between_pos(pos_b, pos_a, no_go_dir_b)
 
@@ -199,7 +168,13 @@ def _route_between_pos(components: List[CirCmp], pos_a: np.ndarray, pos_b: np.nd
     conn_lines.append(l_a)
     conn_lines.append(l_b)
 
-def _route_single_components(components: List[CirCmp], connection: Tuple[CirCmp, Pin, CirCmp, Pin]):
+def _add_stud(pin: Pin, pos: np.ndarray, conn_lines: List[ConnLine]):
+    length = max(np.random.normal(PIN_LENGTHENING, 20), 5)
+    pos_a = pin.position + length * pin.direction + pos
+    conn_lines.append(ConnLine(pin.position + pos, pos_a, persistent=True))
+    return pos_a
+
+def _route_single_components(connection: Tuple[CirCmp, Pin, CirCmp, Pin]):
     conn_lines: List[ConnLine] = []
 
     pos_a = connection[0].pos
@@ -207,23 +182,32 @@ def _route_single_components(components: List[CirCmp], connection: Tuple[CirCmp,
 
     if connection[0].type_id != 'knot':
         # component one stud
-        pos_a = connection[1].position + MIN_PIN_DIST * connection[1].direction + connection[0].pos
-        conn_lines.append(ConnLine(connection[1].position + connection[0].pos, pos_a, persistent=True))
+        pos_a = _add_stud(connection[1], connection[0].pos, conn_lines)
 
     if connection[2].type_id != 'knot':
         # component two stud
-        pos_b = connection[3].position + MIN_PIN_DIST * connection[3].direction + connection[2].pos
-        conn_lines.append(ConnLine(connection[3].position + connection[2].pos, pos_b, persistent=True))
+        pos_b = _add_stud(connection[3], connection[2].pos, conn_lines)
 
     if pos_a is not None and pos_b is not None:
-        _route_between_pos(components, pos_a, pos_b, -connection[1].direction if connection[1] is not None else None, -connection[3].direction if connection[3] is not None else None, conn_lines)
+        _route_between_pos(pos_a, pos_b, -connection[1].direction if connection[1] is not None else None, -connection[3].direction if connection[3] is not None else None, conn_lines)
 
     return conn_lines
+
+def _remove_empty_knots(components: List[CirCmp], connections: List[Tuple[CirCmp, Pin, CirCmp, Pin]]):
+    knots = [cmp for cmp in components if cmp.type_id == 'knot' and cmp.pos is None]
+    knot_conns = [conn for conn in connections if conn[0] in knots or conn[2] in knots]
 
 def _place_knots(components: List[CirCmp], connections: List[Tuple[CirCmp, Pin, CirCmp, Pin]]):
     knots = [cmp for cmp in components if cmp.type_id == 'knot' and cmp.pos is None]
     knot_conns = [conn for conn in connections if conn[0] in knots or conn[2] in knots]
     
+    for knot in knots:
+        for conn in knot_conns:
+            if conn[0] is knot or conn[2] is knot:
+                break
+        else:
+            components.remove(knot)
+
     # place at (0, 0)
     for knot in knots:
         knot.pos = np.zeros(2, dtype=float)
@@ -249,16 +233,23 @@ def _place_knots(components: List[CirCmp], connections: List[Tuple[CirCmp, Pin, 
 
 def route(components: List[CirCmp], connections: List[Tuple[CirCmp, Pin, CirCmp, Pin]]) -> RoutedCircuit:
     conn_lines: List[ConnLine] = []
-    knots: List[Knot] = []
+    unconnected_pins: List[Tuple[Pin, np.ndarray]]
 
+    unconnected_pins = [(pin, comp.pos) for comp in components if comp.cmp is not None for pin in comp.cmp.pins.values() if pin is not None]
+
+    _remove_empty_knots(components, connections)
     _place_knots(components, connections)
-
+    
     for conn in connections:
-        new_lines = _route_single_components(components, conn)
+        new_lines = _route_single_components(conn)
         conn_lines.extend(new_lines)
+
+        unconnected_pins[:] = [item for item in unconnected_pins if item[0] is not conn[1] and item[0] is not conn[3]]
+
+    for pin, pos in unconnected_pins:
+        _add_stud(pin, pos, conn_lines)
 
     circuit = RoutedCircuit(components, conn_lines)
     circuit.convert_knot_cmp()
     circuit.mark_lines_crossing()
-    circuit.remove_occupied()
     return circuit

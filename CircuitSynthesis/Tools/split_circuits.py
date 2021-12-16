@@ -1,12 +1,6 @@
 from typing import List, Tuple
 
-from .squigglylines import Lines
-from .autoroute import CirCmp, RoutedCircuit
-
 import numpy as np
-import cv2
-import random
-import math
 
 SUB_SIZE = 640
 MIN_OVERLAP = 50
