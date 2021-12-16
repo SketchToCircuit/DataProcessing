@@ -8,7 +8,7 @@ from Tools.autoroute import *
 import random
 import numpy as np
 
-DROP_LINE_PERCENTAGE = 0.4
+DROP_LINE_PERCENTAGE = 0.0
 PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 MAX_GRIDSIZE_OFFSET = 25
@@ -18,7 +18,7 @@ CIRCUITS_PER_FILE = 1000
 VALIDATION_NUM = 250
 VAL_SRC_SPLIT = 0.1
 
-DEBUG = False
+DEBUG = True
 
 def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
     cmps = []
@@ -29,7 +29,6 @@ def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos)
             random_type = random.sample(components.keys(), k=1)[0]
         cmps[i] = random.sample(components[random_type], k=1)[0]
         cmps[i] = cmps.load()
-
     cmps: List[Component]
     componentSize = int(random.randint(64,128))
     #fpos = first position = the postition of combined bounding box
@@ -124,10 +123,16 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
             
             cmp = components[random_type][rand_idx]
             
+            #Loaded components are enabled to Edit
             cmp = cmp.load()
             _augment(cmp)
             cmp.scale(componentSize / np.max(cmp.component_img.shape))
             
+            #make some components Bigger[by now only the OPV]
+            allowed = ["OPV"]
+            if cmp.type in allowed:
+                 cmp.scale(int(random.randint(100,150)) / np.max(cmp.component_img.shape))
+
             newEntry = CirCmp(random_type, cmp, pos)
             compList.append(newEntry)
 
