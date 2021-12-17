@@ -100,11 +100,6 @@ def augment(image, boxes):
         # 50% sinusoidal warping (not implemented yet)
         else:
             image = warp_sinusoidal(image, tf.random.uniform([], minval=0, maxval=1)) # random strength
-
-    # 70% normal distributed noise
-    if tf.random.uniform([]) < 0.7:
-        #add noise with equally likely hood 
-        noise_normal(image,10) 
     return image, boxes
 
 # for eagerly testing the augmentation on *.tfrecord
