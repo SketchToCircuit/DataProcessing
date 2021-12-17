@@ -4,6 +4,7 @@ import random
 import traceback
 from dataclasses import dataclass
 import json
+import copy
 
 import cv2
 import numpy as np
@@ -109,7 +110,7 @@ class UnloadedComponent:
         cmp_img = cv2.imread(self._component_path, cv2.IMREAD_UNCHANGED)
         lbl_img = cv2.imread(self._label_path, cv2.IMREAD_UNCHANGED)
 
-        return Component(cmp_img, lbl_img, self._label_offset, self._pins, self._type)
+        return Component(cmp_img, lbl_img, self._label_offset.copy(), copy.deepcopy(self._pins), self._type)
 
 def import_components(data_path) -> Dict[str, List[UnloadedComponent]]:
     with open(data_path, 'r') as f:
