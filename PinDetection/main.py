@@ -197,6 +197,7 @@ def tbjsonGenerator():
             break
         yield cmpPath, label, pins
 
+#Return 
 def getComponentsSorted():
         data = json.load(open(config.DATAJSONPATH))
         comps = data.keys()
