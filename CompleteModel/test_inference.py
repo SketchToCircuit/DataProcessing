@@ -1,9 +1,12 @@
 import os
 from typing import List, Tuple
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import tensorflow as tf
+
+tf.config.optimizer.set_jit(True)
+
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 
 physical_devices = tf.config.list_physical_devices("GPU")
@@ -15,23 +18,25 @@ else:
 import cv2
 import numpy as np
 
-from object_detection.utils import visualization_utils as viz_utils
 from object_detection.utils import label_map_util
+
+from image_processing import SplitImage
 
 NUM_CLASSES = 42 # without background
 
 category_index = label_map_util.create_category_index_from_labelmap('./ObjectDetection/data/label_map.pbtxt',use_display_name=True)
 
-orig_img = cv2.imread('./ObjectDetection/Inference/Images/test.jpeg')
-
-sf = 640 / np.max(orig_img.shape)
-orig_img = cv2.resize(orig_img, dsize=None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA)
-
-padded_img = np.full((640, 640, 3), 255, dtype=np.uint8)
-padded_img[:orig_img.shape[0], :orig_img.shape[1]] = orig_img
+orig_img = cv2.imread('./CompleteModel/test.jpeg')
 
 # filter blue grid
-img = np.where(np.all(padded_img < 128, axis=-1), 0, 255)
+img = np.where(np.all(orig_img < 128, axis=-1, keepdims=True), [0, 0, 0], [255, 255, 255])
+
+images, offsets, sub_size = SplitImage(result_size=640, max_sub_size=800, overlap=100)(tf.convert_to_tensor(img, dtype=tf.uint8))
+
+for i, patch in enumerate(images.numpy()):
+    cv2.imwrite(f'./CompleteModel/test_patch_{i}.jpeg', patch)
+
+exit()
 
 img = tf.expand_dims(tf.convert_to_tensor(img, dtype=tf.uint8), axis=-1)
 img = tf.repeat(img, 3, axis=-1)
@@ -42,7 +47,7 @@ class InferenceModel():
         self._model = tf.saved_model.load('./ObjectDetection/exported_models/ssd_resnet101_640_v8/saved_model')
         self._other_obj_mask, self._combined_object_masks = self._get_combined_object_masks()
     
-    @tf.function
+    @tf.function(input_signature=[tf.TensorSpec((640, 640, 3), dtype=tf.uint8)], experimental_follow_type_hints=True)
     def __call__(self, img: tf.Tensor):
         img = tf.expand_dims(img, axis=0)
     
@@ -142,4 +147,4 @@ for det_class, box in zip(classes.numpy(), boxes.numpy()):
     box = (box * 640).astype(int)
     orig_img = cv2.rectangle(orig_img, (box[1], box[0]), (box[3], box[2]), (0, 0, 255), thickness=2)
     
-cv2.imwrite('./ObjectDetection/Inference/Images/test_detected.jpeg', orig_img)
+cv2.imwrite('./CompleteModel/test_detected.jpeg', orig_img)
