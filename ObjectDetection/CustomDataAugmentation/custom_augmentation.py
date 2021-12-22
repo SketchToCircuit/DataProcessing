@@ -66,8 +66,29 @@ def warp_sinusoidal(img, strength):
     return img
 
 def noise_normal(img, strength):
-    img = img - tf.random.normal(tf.shape(img), 128, strength)
+    img = img + tf.random.normal(tf.shape(img), mean=0.0, stddev=strength, dtype=tf.float32)
     img = tf.clip_by_value(img, 0, 255)
+    return img
+
+def noise_uniform(img, strength):
+    img = img + tf.random.uniform(tf.shape(img), -strength, strength, dtype=tf.dtypes.float32)
+    img = tf.clip_by_value(img, 0, 255)
+    return img
+
+def uneven_resize(img, span):
+    print("resize")
+    #[tf.shape(img)[0] , tf.shape(img)[1]] * tf.random.uniform([],minval=0.9, maxval=1.1)
+    # 50% probability for scaling height 50/50
+    if(tf.random.uniform([]) < 0.5):
+        newsize = [
+        tf.cast(tf.cast(tf.shape(img)[1],tf.dtypes.float32) * tf.random.uniform([],minval=1 -span, maxval=1 + span),tf.dtypes.int32),
+        tf.shape(img)[0]]
+    else:
+         newsize = [
+        tf.cast(tf.cast(tf.shape(img)[0],tf.dtypes.float32) * tf.random.uniform([],minval=1 -span, maxval=1 + span),tf.dtypes.int32),
+        tf.shape(img)[1]]
+        
+    img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC)
     return img
 
 @tf.function
@@ -84,8 +105,8 @@ def augment(image, boxes):
     else:
         image = threshold(image)
 
-    # 50% dilation or erosion
-    if tf.random.uniform([]) < 0.5:
+    # 70% dilation or erosion
+    if tf.random.uniform([]) < 0.7:
         # 90% erosion, 10% dilation
         if tf.random.uniform([]) < 0.9:
             image = erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)) # between 1 and 5 (inclusive) for erosion (thicker)
@@ -100,6 +121,22 @@ def augment(image, boxes):
         # 50% sinusoidal warping (not implemented yet)
         else:
             image = warp_sinusoidal(image, tf.random.uniform([], minval=0, maxval=1)) # random strength
+
+    # 70% add  Noise
+    if tf.random.uniform([]) < 7.0:
+        # 70% add normal Noise
+        if tf.random.uniform([]) < 0.7:
+            image = noise_normal(image, strength=tf.random.uniform([], minval=10, maxval=30))
+        # 30% add uniform noise
+        else:
+            image = noise_uniform(image, strength=tf.random.uniform([], minval=10, maxval=30))
+
+    # 30% resize Picture uneven
+    if tf.random.uniform([]) < 0.3:
+        image = uneven_resize(image, span=0.1)
+
+    #set all color chanels to the same value 
+    image = tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1)
     return image, boxes
 
 # for eagerly testing the augmentation on *.tfrecord
