@@ -76,8 +76,6 @@ def noise_uniform(img, strength):
     return img
 
 def uneven_resize(img, span):
-    print("resize")
-    #[tf.shape(img)[0] , tf.shape(img)[1]] * tf.random.uniform([],minval=0.9, maxval=1.1)
     # 50% probability for scaling height 50/50
     if(tf.random.uniform([]) < 0.5):
         newsize = [
@@ -90,6 +88,21 @@ def uneven_resize(img, span):
         
     img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC)
     return img
+
+def antialiasing(img):
+    newsize = [
+        tf.cast(tf.cast(tf.shape(img)[1],tf.dtypes.float32) * 3,tf.dtypes.int32),
+        tf.cast(tf.cast(tf.shape(img)[0],tf.dtypes.float32) * 3,tf.dtypes.int32)]
+    img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC,antialias=True)
+    newsize = [
+        tf.cast(tf.cast(tf.shape(img)[1],tf.dtypes.float32) * (1/3),tf.dtypes.int32),
+        tf.cast(tf.cast(tf.shape(img)[0],tf.dtypes.float32) * (1/3),tf.dtypes.int32)]
+    img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC,antialias=True)
+    return img  
+
+def shearing(img, shearlevel):
+   img = tfa.image.shear_x(img,level=shearlevel,replace=[1])
+   return img  
 
 @tf.function
 def augment(image, boxes):
@@ -122,6 +135,16 @@ def augment(image, boxes):
         else:
             image = warp_sinusoidal(image, tf.random.uniform([], minval=0, maxval=1)) # random strength
 
+    # 40% antialiasing
+    if tf.random.uniform([]) < 0.4:
+        image = antialiasing(image)
+
+    # 40% shearing
+    if tf.random.uniform([]) < 1:
+        print("shearX")
+        image = shearing(image, 0.4)
+        print("shearX2")
+
     # 70% add  Noise
     if tf.random.uniform([]) < 7.0:
         # 70% add normal Noise
@@ -134,6 +157,9 @@ def augment(image, boxes):
     # 30% resize Picture uneven
     if tf.random.uniform([]) < 0.3:
         image = uneven_resize(image, span=0.1)
+
+    
+         
 
     #set all color chanels to the same value 
     image = tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1)
