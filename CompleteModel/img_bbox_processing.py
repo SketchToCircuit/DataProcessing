@@ -7,14 +7,24 @@ def resize_and_pad_bottom_left(img, size):
     padded = tf.pad(resized, [[0, size[0] - res_size[0]], [0, size[1] - res_size[1]], [0, 0]], mode='CONSTANT', constant_values=255)
     return padded
 
+class MergeBoxes():
+    def __init__(self, src_size=640) -> None:
+        self._src_size = src_size
+
+    @tf.function(input_signature=[tf.TensorSpec(shape=(None, 4), dtype=tf.float32), tf.TensorSpec(shape=(None), dtype=tf.int32), tf.TensorSpec(shape=(None, 2), dtype=tf.int32), tf.TensorSpec(shape=(2), dtype=tf.int32)])
+    def __call__(self, boxes, img_indices, offsets, sub_size):
+        sf = tf.cast(tf.reduce_max(sub_size / self._src_size), tf.float32)
+        boxes = boxes * tf.cast(self._src_size, tf.float32) * sf + tf.repeat(tf.gather(offsets, img_indices), 2, axis=-1)
+        return tf.cast(boxes, tf.int32, name='boxes')
+
 class SplitImage():
     def __init__(self, result_size=640, max_sub_size=800, overlap=100) -> None:
         self.result_size = result_size
         self.max_sub_size = max_sub_size
         self.overlap = overlap
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8), ])
-    def __call__(self, img: tf.Tensor, ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    @tf.function(input_signature=[tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8)])
+    def __call__(self, img: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         '''
         input: image as tf.Tensor in RGB with shape (None, None, 3) and dtype=tf.uint8
         return: Tuple of images and original sizes plus offsets -> (images, orig_sizes, offsets)
