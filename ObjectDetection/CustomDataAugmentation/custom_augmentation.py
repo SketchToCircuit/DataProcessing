@@ -7,6 +7,12 @@ import tensorflow_addons as tfa
 import cv2
 import numpy as np
 
+def resize_antialiased(img, size, method, antialias):
+    if antialias:
+        return tf.image.resize(img, size, method, antialias=True)
+    else:
+        return tf.image.resize(img, size, method, antialias=False)
+
 def threshold(img):
     return tf.where(img < 200, 0.0, 255.0)
 
@@ -77,7 +83,7 @@ def noise_uniform(img, strength):
 
 def uneven_resize(img, span):
     # 50% probability for scaling height 50/50
-    if(tf.random.uniform([]) < 0.5):
+    if tf.random.uniform([]) < 0.5:
         newsize = [
         tf.cast(tf.cast(tf.shape(img)[1],tf.dtypes.float32) * tf.random.uniform([],minval=1 -span, maxval=1 + span),tf.dtypes.int32),
         tf.shape(img)[0]]
@@ -85,24 +91,27 @@ def uneven_resize(img, span):
          newsize = [
         tf.cast(tf.cast(tf.shape(img)[0],tf.dtypes.float32) * tf.random.uniform([],minval=1 -span, maxval=1 + span),tf.dtypes.int32),
         tf.shape(img)[1]]
-        
-    img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC)
-    return img
+    
+    r = tf.random.uniform([])
+    if r < 1/3:
+        img = resize_antialiased(img, newsize, tf.image.ResizeMethod.AREA, tf.random.uniform([]) < 0.5)
+    elif r < 2/3:
+        img = resize_antialiased(img, newsize, tf.image.ResizeMethod.BICUBIC, tf.random.uniform([]) < 0.5)
+    else:
+        img = resize_antialiased(img, newsize, tf.image.ResizeMethod.NEAREST_NEIGHBOR, tf.random.uniform([]) < 0.5)
 
-def antialiasing(img):
-    newsize = [
-        tf.cast(tf.cast(tf.shape(img)[1],tf.dtypes.float32) * 3,tf.dtypes.int32),
-        tf.cast(tf.cast(tf.shape(img)[0],tf.dtypes.float32) * 3,tf.dtypes.int32)]
-    img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC,antialias=True)
-    newsize = [
-        tf.cast(tf.cast(tf.shape(img)[1],tf.dtypes.float32) * (1/3),tf.dtypes.int32),
-        tf.cast(tf.cast(tf.shape(img)[0],tf.dtypes.float32) * (1/3),tf.dtypes.int32)]
-    img = tf.image.resize(img, size=newsize,  method=tf.image.ResizeMethod.BICUBIC,antialias=True)
     return img  
 
-def shearing(img, shearlevel):
-   img = tfa.image.shear_x(img,level=shearlevel,replace=[1])
-   return img  
+def shearing(img, boxes, shearlevel):
+    img = tfa.image.shear_x(img,level=shearlevel, replace=[255, 255, 255])
+    #new bounding boxes are the sheared diagonal corner points of the bounding box
+    #Points are counteed counter cockwise beginning with left Top
+    boundingPoints = [tf.constant(boxes[0], boxes[1]), tf.constant(boxes[2], boxes[1]), tf.constant(boxes[2], boxes[3]), tf.constant(boxes[0], boxes[3])]
+    for i in range(4):
+        boundingPoints[i] = tf.matmul(boundingPoints[i], tf.constant([shearlevel,1],[0,1]))
+
+    boxes[0] = tf.minimum(boundingPoints[0],)
+    return img, boxes 
 
 @tf.function
 def augment(image, boxes):
@@ -135,17 +144,11 @@ def augment(image, boxes):
         else:
             image = warp_sinusoidal(image, tf.random.uniform([], minval=0, maxval=1)) # random strength
 
-    # 40% antialiasing
-    if tf.random.uniform([]) < 0.4:
-        image = antialiasing(image)
-
     # 40% shearing
     if tf.random.uniform([]) < 1:
-        print("shearX")
-        image = shearing(image, 0.4)
-        print("shearX2")
+        image, boxes = shearing(image, boxes, 0.4)
 
-    # 70% add  Noise
+    # # 70% add  Noise
     if tf.random.uniform([]) < 7.0:
         # 70% add normal Noise
         if tf.random.uniform([]) < 0.7:
@@ -154,12 +157,9 @@ def augment(image, boxes):
         else:
             image = noise_uniform(image, strength=tf.random.uniform([], minval=10, maxval=30))
 
-    # 30% resize Picture uneven
+    # # 30% resize Picture uneven
     if tf.random.uniform([]) < 0.3:
-        image = uneven_resize(image, span=0.1)
-
-    
-         
+        image = uneven_resize(image, span=0.1)         
 
     #set all color chanels to the same value 
     image = tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1)
@@ -216,4 +216,4 @@ def test(path: str, num_samples: int):
         cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    test('./ObjectDetection/data/val.tfrecord', 5)
+    test('./ObjectDetection/data/train-0.tfrecord', 5)
