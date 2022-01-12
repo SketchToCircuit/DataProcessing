@@ -174,7 +174,7 @@ def augment(image, boxes):
             image = noise_uniform(image, strength=tf.random.uniform([], minval=10, maxval=30))
 
     # set all color channels to the same value
-    image = tf.repeat(tf.image.rgb_to_grayscale(image), 3, axis=-1)
+    image = tf.repeat(tf.reduce_mean(image, axis=-1, keepdims=True), 3, axis=-1)
     return image, boxes
 
 # for eagerly testing the augmentation on *.tfrecord

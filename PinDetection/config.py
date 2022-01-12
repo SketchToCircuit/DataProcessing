@@ -6,8 +6,8 @@ DATAJSONPATH = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', "p
 TBDIR = "./PinDetection/logs/"
 LOGDIR = os.path.join("./PinDetection/logs/", datetime.now().strftime("%d-%m-%Y-%H-%M-%S"))
 
-MODELDIR = "./PinDetection/model/"
-MODELPATH = os.path.join(MODELDIR, "t1cp.ckpt")
+TRAINMODELDIR = "./PinDetection/modelTrain/"
+TRAINMODELPATH = os.path.join(TRAINMODELDIR, "t1cp.ckpt")
 
 IMG_SIZE = 128
 

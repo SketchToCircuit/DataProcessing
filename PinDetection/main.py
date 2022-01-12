@@ -6,17 +6,15 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from random import randint, randrange
 import tensorflow_addons as tfa
-import numpy as np
 
 import config
+import models
 
 physical_devices = tf.config.list_physical_devices("GPU")
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 else:
     print("No GPU detected!")
-
-#tf.debugging.experimental.enable_dump_debug_info(config.LOGDIR, tensor_debug_mode="FULL_HEALTH", circular_buffer_size=-1)
 
 def main():
     tbDataSet = tf.data.Dataset.from_generator(tbjsonGenerator, output_types=(tf.string, tf.int32, tf.double))
@@ -33,11 +31,11 @@ def main():
     valDs = valDs.batch(128, num_parallel_calls=tf.data.AUTOTUNE, deterministic=False).prefetch(512)
 
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir=config.LOGDIR,update_freq=1,write_graph=True, write_images=True,histogram_freq=1)
-    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=config.MODELPATH,save_freq=len(list(trainDs))*10,save_weights_only=True,verbose=1)
+    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=config.TRAINMODELPATH,save_freq=len(list(trainDs))*10,save_weights_only=True,verbose=1)
 
-    model = getModel()
-    if(os.path.exists(os.path.join(config.MODELDIR, "checkpoint"))):
-        model.load_weights(config.MODELPATH)
+    model = models.getModel()
+    if(os.path.exists(os.path.join(config.TRAINMODELPATH, "checkpoint"))):
+        model.load_weights(config.TRAINMODELPATH)
     model.compile(optimizer="adam", loss="mse", metrics=["accuracy"])
     model.summary()
     model.fit(trainDs, epochs=400, validation_data=valDs,callbacks=[tb_callback, cp_callback,CustomTensorboard(tbDataSet)])
@@ -58,44 +56,17 @@ class CustomTensorboard(keras.callbacks.Callback):
             predic = tf.image.resize_with_pad(tf.cast(tf.reshape(self.model.predict({"input1": inputs["input1"], "input2": inputs["input2"]}), [-1,32,32,1]),tf.float32), 128,128, antialias=False)
             val = tf.image.resize_with_pad(tf.cast(outputs,tf.float32),128,128,antialias=False)
             component = tf.cast(inputs["input1"],tf.float32)
-
             count = 0
             with self.summary_writer.as_default():
                 for _component, _val, _pinImg in zip(component, val, predic):
                     tf.summary.image(self.sortedComps[count], [_component, _val, _pinImg] , step=epoch)
                     count = count + 1
-    
-def getModel():
-    input1 = tf.keras.Input(shape=(128,128,1), name='input1')
-    input2 = tf.keras.Input(shape=(46), name='input2')
 
-    y = layers.Conv2D(64, (3,3), activation='relu')(input1)
-    y = layers.Dropout(0.2)(y)
-    y = layers.Conv2D(32, (3,3), activation='relu')(y)
-    y = layers.Dropout(0.2)(y)
-    y = layers.MaxPool2D()(y)
-    y = layers.Flatten()(y)
-    y = layers.Dropout(0.3)(y)
-    y = layers.Dense(256, activation='relu')(y)
-
-    x = layers.Dense(128, activation='relu')(input2)
-    x = layers.Dropout(0.2)(x)
-    x = layers.Dense(64 , activation='relu')(x)
-    x = layers.Dense(32 , activation='relu')(x)
-    x = layers.Dropout(0.2)(x)
-
-    z = layers.Concatenate()([x, y])
-    z = layers.Dense(128, activation='relu')(z)
-    z = layers.Dropout(0.2)(z)
-    z = layers.Dense(1024, activation='relu')(z)
-    z = layers.Reshape((32,32,1))(z)
-
-    model = tf.keras.Model(inputs = [input1, input2], outputs = z, name='predict')
-    return model
-
+@tf.function
 def noAugment(img, label, pinImage):
     return ({"input1": img, "input2": label}, pinImage)
 
+@tf.function
 def dataAugment(img, label, pinImage):
     #Turn Images randomly
     angle = tf.random.uniform((1,), -20,20, dtype=tf.float32)
@@ -103,7 +74,7 @@ def dataAugment(img, label, pinImage):
     pinImage = tfa.image.rotate(pinImage, angle, fill_mode="nearest")
 
     pinImage = tfa.image.gaussian_filter2d(pinImage, 24, 2.7)
-
+    
     if(randint(1,4) == 1):
         pinImage = tf.image.flip_left_right(pinImage)
         img = tf.image.flip_left_right(img)
@@ -114,6 +85,7 @@ def dataAugment(img, label, pinImage):
 
     return ({"input1": img, "input2": label}, pinImage)
 
+@tf.function
 def dataProc(img, pins, label):
     oldWidth = tf.cast(tf.shape(img)[1], tf.float32)
     oldHeigt = tf.cast(tf.shape(img)[0], tf.float32)
@@ -155,6 +127,7 @@ def dataProc(img, pins, label):
 
     return img, label, pinImage
 
+@tf.function
 def loadImage(filepath, label, pins):
     img = tf.io.read_file(filepath)
     img = tf.image.decode_png(img)

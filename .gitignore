@@ -115,3 +115,10 @@ PinDetection/model/*
 __pycache__/
 *.pyc
 *.pyo
+
+# TF - Checkpoints
+checkpoint
+*ckpt*.index
+*ckpt*.data*
+losses.json
+*tfevent*

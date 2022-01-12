@@ -1,6 +1,0 @@
-#ignore logs and checkpoints
-train/
-eval/
-checkpoint*
-ckpt*
-best_ckps/
