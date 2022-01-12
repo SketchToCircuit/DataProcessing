@@ -1,5 +1,5 @@
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 from typing import List, Tuple
 import cv2
@@ -22,7 +22,7 @@ from detection_model import ObjectDetectionModel
 
 NUM_CLASSES = 42 # without background
 
-category_index = label_map_util.create_category_index_from_labelmap('./ObjectDetection/data/label_map.pbtxt',use_display_name=True)
+category_index = label_map_util.create_category_index_from_labelmap('./ObjectDetection/data/label_map.pbtxt', use_display_name=True)
 
 orig_img = cv2.imread('./CompleteModel/test.jpeg')
 
@@ -34,12 +34,11 @@ sf = tf.reduce_max(sub_size / 640).numpy()
 for i, patch in enumerate(images.numpy()):
     cv2.imwrite(f'./CompleteModel/test_patch_{i}.jpeg', patch)
 
-boxes, classes, img_indices = ObjectDetectionModel('./ObjectDetection/exported_models/ssd_resnet101_640_v8/saved_model')(images).values()
+boxes, classes, img_indices = ObjectDetectionModel('./ObjectDetection/exported_models/ssd_resnet101_640_v11/saved_model')(images).values()
 
-boxes = MergeBoxes(src_size=640)(boxes)
+boxes = MergeBoxes(src_size=640)(boxes, img_indices, offsets, sub_size)
 
 for det_class, box, idx in zip(classes.numpy(), boxes.numpy(), img_indices.numpy()):
-    box = box.numpy()
     orig_img = cv2.rectangle(orig_img, (box[1], box[0]), (box[3], box[2]), (0, 0, 255), thickness=2)
     
 cv2.imwrite('./CompleteModel/test_detected.jpeg', orig_img)

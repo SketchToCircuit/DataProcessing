@@ -21,7 +21,7 @@ class ObjectDetectionModel():
             tf.expand_dims((1.0 - detections['detection_scores']) / self._num_classes, axis=-1))
     
         # combine original scores and selected scores
-        multiclass_scores = multiclass_scores * 2.0 + orig_redistributed_scores * 0.0
+        multiclass_scores = multiclass_scores * 0.0 + orig_redistributed_scores * 1.0
     
         # choose single object scores
         combined_scores = tf.squeeze(tf.gather(multiclass_scores, tf.where(self._other_obj_mask == 1), axis=2), axis=-1)
@@ -33,14 +33,17 @@ class ObjectDetectionModel():
             combined_scores = tf.concat([combined_scores, score], axis=2)
     
         # normalize scores
-        combined_scores = combined_scores / tf.reduce_sum(combined_scores, axis=2, keepdims=True)
+        #combined_scores = combined_scores / tf.reduce_sum(combined_scores, axis=2, keepdims=True)
+        combined_scores = -tf.math.log(1.0 / combined_scores - 1.0)
+        combined_scores = tf.nn.softmax(combined_scores)
 
-        indices = tf.squeeze(tf.where(tf.reduce_max(combined_scores, axis=2) > 0.7))
+        tf.print(tf.reduce_max(combined_scores, axis=2))
+        indices = tf.squeeze(tf.where(tf.reduce_max(combined_scores, axis=2) > 0.5))
 
         boxes = tf.ensure_shape(tf.gather_nd(detections['detection_boxes'], indices), (None, 4))
         classes = tf.cast(tf.gather_nd(detections['detection_classes'], indices), tf.uint8)
 
-        return {'boxes': boxes, 'classes': classes, 'img_indices': indices[:, 0]}
+        return {'boxes': boxes, 'classes': classes, 'img_indices': tf.cast(indices[:, 0], tf.int32)}
 
     def _get_combined_object_masks(self) -> Tuple[tf.Tensor, List[tf.Tensor]]:
         combined_object_masks = []

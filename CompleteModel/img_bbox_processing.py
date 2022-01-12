@@ -1,20 +1,29 @@
+import threading
 from typing import Tuple
 import tensorflow as tf
 
-def resize_and_pad_bottom_left(img, size):
-    resized = tf.cast(tf.image.resize(img, size, preserve_aspect_ratio=True, method=tf.image.ResizeMethod.AREA, antialias=True), tf.uint8)
-    res_size = tf.shape(resized)
-    padded = tf.pad(resized, [[0, size[0] - res_size[0]], [0, size[1] - res_size[1]], [0, 0]], mode='CONSTANT', constant_values=255)
-    return padded
+def resize_and_pad(img, size):
+    img = tf.cast(255 - tf.image.resize_with_pad(255 - img, size, size, method=tf.image.ResizeMethod.AREA), tf.uint8)
+    return img
 
 class MergeBoxes():
     def __init__(self, src_size=640) -> None:
         self._src_size = src_size
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=(None, 4), dtype=tf.float32), tf.TensorSpec(shape=(None), dtype=tf.int32), tf.TensorSpec(shape=(None, 2), dtype=tf.int32), tf.TensorSpec(shape=(2), dtype=tf.int32)])
+    @tf.function(input_signature=[tf.TensorSpec(shape=(None, 4), dtype=tf.float32), tf.TensorSpec(shape=(None,), dtype=tf.int32), tf.TensorSpec(shape=(None, 2), dtype=tf.int32), tf.TensorSpec(shape=(2), dtype=tf.int32)])
     def __call__(self, boxes, img_indices, offsets, sub_size):
         sf = tf.cast(tf.reduce_max(sub_size / self._src_size), tf.float32)
-        boxes = boxes * tf.cast(self._src_size, tf.float32) * sf + tf.repeat(tf.gather(offsets, img_indices), 2, axis=-1)
+        per_patch_pad_offset = tf.clip_by_value(640 - tf.cast(sub_size, tf.float32) / sf, 0.0, self._src_size) / 2.0
+        per_patch_pad_offset = tf.tile(per_patch_pad_offset, [2])
+
+        patch_positions = tf.ensure_shape(tf.gather(offsets, img_indices), (None, 2))
+        patch_positions = tf.tile(patch_positions, [1, 2])
+
+        boxes = boxes * tf.cast(self._src_size, tf.float32)
+        boxes = boxes - per_patch_pad_offset
+        boxes = boxes * sf
+        boxes = boxes + tf.cast(patch_positions, tf.float32)
+
         return tf.cast(boxes, tf.int32, name='boxes')
 
 class SplitImage():
@@ -36,7 +45,7 @@ class SplitImage():
         size = tf.shape(img)
 
         if tf.reduce_all(size < self.max_sub_size):
-            return (tf.expand_dims(resize_and_pad_bottom_left(img, [self.result_size, self.result_size]), 0, name='images'), tf.constant([[0, 0]], dtype=tf.int32, name='offsets'), tf.identity(size[:2], name='orig_sub_size'))
+            return (tf.expand_dims(resize_and_pad(img, self.result_size), 0, name='images'), tf.constant([[0, 0]], dtype=tf.int32, name='offsets'), tf.identity(size[:2], name='orig_sub_size'))
 
         # for visualization of these numbers: https://drive.google.com/file/d/1aZhQrWoTZLHLKWHMVWnJfyu1em_SFwBW/view?usp=sharing
         num = tf.cast(tf.math.maximum(tf.math.ceil((size[:2] - self.overlap) / (self.max_sub_size - self.overlap)), 1), dtype=tf.int32)
@@ -52,7 +61,7 @@ class SplitImage():
                 offsets = offsets.write(i_y + i_x * num[0], offset)
                 patch = img[offset[0]:offset[0]+sub_size[0], offset[1]:offset[1]+sub_size[1], :]
 
-                padded = resize_and_pad_bottom_left(patch, [self.result_size, self.result_size])
+                padded = resize_and_pad(patch, self.result_size)
                 images = images.write(i_y + i_x * num[0], padded)
 
         return (images.stack(name='images'), offsets.stack(name='offsets'), tf.identity(sub_size, name='orig_sub_size'))
