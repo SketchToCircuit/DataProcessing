@@ -1,6 +1,31 @@
-import threading
 from typing import Tuple
 import tensorflow as tf
+
+def erode(img, size):
+    # https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation
+
+    # create kernel with random size with shape (a, a, 1)
+    size = tf.repeat(size, 2)
+    size = tf.pad(size, paddings=tf.constant([[0, 1]]), constant_values=1)
+    kernel = tf.ensure_shape(tf.zeros(size, dtype=tf.float32), [None, None, 1])
+
+    img = tf.nn.erosion2d(img, filters=kernel, strides=(1,1,1,1), dilations=(1,1,1,1), padding="SAME", data_format="NHWC")
+
+    return img
+
+def savely_decode_base64(base64: tf.Tensor):
+    # convert to web-safe base64
+    base64 = tf.strings.regex_replace(base64, '\+', '-')
+    base64 = tf.strings.regex_replace(base64, '\/', '_')
+
+    raw = tf.io.decode_base64(base64)
+
+    img = tf.io.decode_image(raw, expand_animations=False)
+
+    if tf.shape(img)[2] != 3:
+        img = tf.repeat(tf.expand_dims(img[:, :, 0], axis=-1), 3, axis=2)
+    
+    return img
 
 def resize_and_pad(img, size):
     img = tf.cast(255 - tf.image.resize_with_pad(255 - img, size, size, method=tf.image.ResizeMethod.AREA), tf.uint8)

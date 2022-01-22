@@ -1,9 +1,11 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
+import config
+
 def getModel():
-    input1 = tf.keras.Input(shape=(128,128,1), name='input1')
-    input2 = tf.keras.Input(shape=(46), name='input2')
+    input1 = tf.keras.Input(shape=(config.IMG_SIZE,config.IMG_SIZE,1), name='input1')
+    input2 = tf.keras.Input(shape=(max([val[1] for val in config.LABEL_CONVERT_DICT.values()])), name='input2')
 
     y = layers.Conv2D(64, (3,3), activation='relu')(input1)
     y = layers.Dropout(0.2)(y)

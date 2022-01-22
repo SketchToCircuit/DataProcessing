@@ -34,7 +34,7 @@ def main():
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=config.TRAINMODELPATH,save_freq=len(list(trainDs))*10,save_weights_only=True,verbose=1)
 
     model = models.getModel()
-    if(os.path.exists(os.path.join(config.TRAINMODELPATH, "checkpoint"))):
+    if(os.path.exists(os.path.join(config.TRAINMODELDIR, "checkpoint"))):
         model.load_weights(config.TRAINMODELPATH)
     model.compile(optimizer="adam", loss="mse", metrics=["accuracy"])
     model.summary()
@@ -53,8 +53,8 @@ class CustomTensorboard(keras.callbacks.Callback):
             inputs, outputs = zip(*self.tbDataSet)
             inputs = inputs[0]
             outputs = outputs[0]
-            predic = tf.image.resize_with_pad(tf.cast(tf.reshape(self.model.predict({"input1": inputs["input1"], "input2": inputs["input2"]}), [-1,32,32,1]),tf.float32), 128,128, antialias=False)
-            val = tf.image.resize_with_pad(tf.cast(outputs,tf.float32),128,128,antialias=False)
+            predic = tf.image.resize_with_pad(tf.cast(tf.reshape(self.model.predict({"input1": inputs["input1"], "input2": inputs["input2"]}), [-1,32,32,1]),tf.float32), config.IMG_SIZE,config.IMG_SIZE, antialias=False)
+            val = tf.image.resize_with_pad(tf.cast(outputs,tf.float32),config.IMG_SIZE,config.IMG_SIZE,antialias=False)
             component = tf.cast(inputs["input1"],tf.float32)
             count = 0
             with self.summary_writer.as_default():
@@ -74,7 +74,7 @@ def dataAugment(img, label, pinImage):
     pinImage = tfa.image.rotate(pinImage, angle, fill_mode="nearest")
 
     pinImage = tfa.image.gaussian_filter2d(pinImage, 24, 2.7)
-    
+
     if(randint(1,4) == 1):
         pinImage = tf.image.flip_left_right(pinImage)
         img = tf.image.flip_left_right(img)
@@ -91,7 +91,7 @@ def dataProc(img, pins, label):
     oldHeigt = tf.cast(tf.shape(img)[0], tf.float32)
 
     img = tf.cast(tf.bitwise.invert(img), dtype=tf.int32)
-    img = tf.cast(tf.image.resize_with_pad(img,config.IMG_SIZE, config.IMG_SIZE), dtype=tf.int32)
+    img = tf.cast(tf.image.resize_with_pad(img,config.IMG_SIZE, config.IMG_SIZE, method=tf.image.ResizeMethod.AREA), dtype=tf.int32)
     white = tf.ones((config.IMG_SIZE, config.IMG_SIZE, 1), dtype=tf.int32)*255
     img = tf.subtract(white, img)
     img = tf.divide(img, 255)
@@ -100,7 +100,6 @@ def dataProc(img, pins, label):
     box1 = tf.concat([tf.divide(pins[0][1],oldHeigt),tf.divide(pins[0][0],oldWidth),tf.divide(pins[0][1],oldHeigt),tf.divide(pins[0][0],oldWidth)], 0)
     box2 = tf.concat([tf.divide(pins[1][1],oldHeigt),tf.divide(pins[1][0],oldWidth),tf.divide(pins[1][1],oldHeigt),tf.divide(pins[1][0],oldWidth)], 0)
     box3 = tf.concat([tf.divide(pins[2][1],oldHeigt),tf.divide(pins[2][0],oldWidth),tf.divide(pins[2][1],oldHeigt),tf.divide(pins[2][0],oldWidth)], 0)
-
 
     box1 = tf.reshape(box1,[1,1,4])
     box2 = tf.reshape(box2,[1,1,4])
@@ -118,11 +117,11 @@ def dataProc(img, pins, label):
     pinImage = tf.reshape(pinImage, [32,32,1])
     pinImage = tf.math.ceil(pinImage)
 
-    pinImage = tfa.image.gaussian_filter2d(pinImage, 8, 3)
+    pinImage = tfa.image.gaussian_filter2d(pinImage, 6, 2)
     pinImage = tf.math.ceil(pinImage)
     
-    img.set_shape([128,128,1])
-    label.set_shape([len(config.CATEGORIES),])
+    img.set_shape([config.IMG_SIZE,config.IMG_SIZE,1])
+    label.set_shape([max([val[1] for val in config.LABEL_CONVERT_DICT.values()]),])
     pinImage.set_shape([32,32,1])
 
     return img, label, pinImage
@@ -132,7 +131,7 @@ def loadImage(filepath, label, pins):
     img = tf.io.read_file(filepath)
     img = tf.image.decode_png(img)
 
-    label = tf.one_hot(label, len(config.CATEGORIES), dtype=tf.int32)
+    label = tf.one_hot(label, max([val[1] for val in config.LABEL_CONVERT_DICT.values()]), dtype=tf.int32)
 
     return img, pins, label
 
@@ -141,7 +140,7 @@ def jsonGenerator():
     for component in data:
         for entry in data[component]:
             cmpPath = os.path.join("/mnt/hdd2/Sketch2Circuit/",os.path.relpath(entry["component_path"]))
-            label = config.CATEGORIES.index(entry["type"])
+            label = config.LABEL_CONVERT_DICT[entry["type"]][1] - 1
             pins = [[-1,-1],[-1,-1],[-1,-1]]
             count = 0
             for pinNmbr in entry["pins"]:
@@ -159,7 +158,7 @@ def tbjsonGenerator():
         cmpPath = None
         for entry in data[component]:
             cmpPath = os.path.join("/mnt/hdd2/Sketch2Circuit/",os.path.relpath(entry["component_path"]))
-            label = config.CATEGORIES.index(entry["type"])
+            label = config.LABEL_CONVERT_DICT[entry["type"]][1] - 1
             pins = [[-1,-1],[-1,-1],[-1,-1]]
             count = 0
             for pinNmbr in entry["pins"]:

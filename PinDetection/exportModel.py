@@ -5,13 +5,13 @@ import os
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-model_dir = os.path.join(os.path.dirname(__file__), "test/")
+model_dir = os.path.join(os.path.dirname(__file__), "exported/")
 
 version = 1
 export_path = os.path.join(model_dir, str(version))
 
 model = models.getModel()
-if(os.path.exists(os.path.join(config.TRAINMODELPATH, "checkpoint"))):
+if(os.path.exists(os.path.join(config.TRAINMODELDIR, "checkpoint"))):
     model.load_weights(config.TRAINMODELPATH)
 model.summary()
 
@@ -19,8 +19,6 @@ tf.keras.models.save_model(
     model,
     export_path,
     overwrite=True,
-    include_optimizer=True,
-    save_format=None,
-    signatures=None,
-    options=None
+    include_optimizer=False,
+    save_format='tf'
 )
