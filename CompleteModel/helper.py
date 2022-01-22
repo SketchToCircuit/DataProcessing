@@ -1,6 +1,14 @@
 from numpy import float32
 import tensorflow as tf
 
+def rotate_vector(vec: tf.Tensor, angle: tf.Tensor):
+    rotation_matrix = tf.stack([tf.cos(angle),
+                              -tf.sin(angle),  
+                               tf.sin(angle),
+                               tf.cos(angle)])
+    rotation_matrix = tf.reshape(rotation_matrix, (2,2))
+    return tf.matmul(vec, rotation_matrix)
+
 def vector_length(vec: tf.Tensor):
     with tf.name_scope('vector_length'):
         return tf.sqrt(tf.reduce_sum(tf.square(vec), axis=-1, keepdims=True))

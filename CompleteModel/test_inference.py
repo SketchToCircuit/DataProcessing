@@ -22,14 +22,6 @@ else:
 
 from combined_model import CombinedModel
 
-from pin_model import PinDetectionModel
-
-pins = tf.constant([[0.8, 0.3], [0.8, 0.7], [0.2, 0.5], [0.3, 0.7]])
-pin_vals = tf.constant([0.7, 0.6, 0.4, 0.4])
-class_id = tf.constant(27, tf.int32)
-print(PinDetectionModel._assert_correct_pin_count(pins, pin_vals, class_id))
-exit()
-
 # from detection_model import ObjectDetectionModel
 # det_model = ObjectDetectionModel('./ObjectDetection/exported_models/ssd_resnet101_640_v11/saved_model')
 
@@ -52,7 +44,7 @@ with open('./CompleteModel/test.jpeg', "rb") as f:
 model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v11/saved_model', './PinDetection/exported/1')
 
 classes, sample_indices, pins, pin_cmp_ids = model(img_encoded).values()
-print(pin_cmp_ids)
+print(pins)
 
 # for i in range(tf.shape(patches)[0].numpy()):
 #     patch = (patches[i].numpy()*255).astype(np.uint8)
