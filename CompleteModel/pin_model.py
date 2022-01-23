@@ -16,8 +16,8 @@ class PinDetectionModel(tf.Module):
         self._num_classes = num_classes
         assert [input.type_spec.shape[1] for input in self._model.inputs if input.name=='input2'][0] == self._num_classes
 
-    @tf.function(input_signature=[tf.TensorSpec((None, None, None, 1), dtype=tf.float32), tf.TensorSpec((None, 42), dtype=tf.float32)], experimental_follow_type_hints=True)
-    def __call__(self, imges: tf.Tensor, class_proposals: tf.Tensor):
+    @tf.function(input_signature=[tf.TensorSpec((None, None, None, 1), dtype=tf.float32), tf.TensorSpec((None, 42), dtype=tf.float32), tf.TensorSpec((None,), dtype=tf.float32), tf.TensorSpec((None, 2), dtype=tf.float32)], experimental_follow_type_hints=True)
+    def __call__(self, imges: tf.Tensor, class_proposals: tf.Tensor, unscaled_sizes: tf.Tensor, patch_offsets: tf.Tensor):
         imges = tf.image.resize(imges, self._img_size)
         heatmaps = self._model({"input1": imges, "input2": class_proposals})
 
@@ -43,12 +43,21 @@ class PinDetectionModel(tf.Module):
                     classes_arr = classes_arr.write(classes_arr.size(), class_id)
                     batch_ids_arr = batch_ids_arr.write(batch_ids_arr.size(), i)
 
+                    pins = PinDetectionModel._transform_pin_positions(pins, unscaled_sizes[i], patch_offsets[i])
+
                     for pin in pins:
                         pins_arr = pins_arr.write(pins_arr.size(), pin)
                         pin_cmp_ids = pin_cmp_ids.write(pin_cmp_ids.size(), classes_arr.size() - 1)
 
         return {'classes': classes_arr.stack(), 'sample_ind': batch_ids_arr.stack(), 'pins': pins_arr.stack(), 'pin_cmp_ids': pin_cmp_ids.stack()}
     
+    @staticmethod
+    def _transform_pin_positions(pins: tf.Tensor, unscaled_size: tf.Tensor, patch_offset: tf.Tensor):
+        patch_offset = patch_offset[::-1]
+        pins = pins - patch_offset
+        pins = pins * unscaled_size
+        return pins
+
     OPV = 27
     S3 = 34
     MIC = 25

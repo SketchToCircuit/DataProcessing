@@ -43,14 +43,24 @@ class CombinedModel(tf.Module):
 
         num_detections = tf.shape(boxes)[0]
         patches = tf.TensorArray(tf.float32, size=num_detections, element_shape=tf.TensorShape((self._object_size, self._object_size, 1)))
+        unscaled_sizes = tf.TensorArray(tf.float32, size=num_detections, element_shape=tf.TensorShape(()))
+        patch_offsets = tf.TensorArray(tf.float32, size=num_detections, element_shape=tf.TensorShape((2)))
 
         with tf.name_scope('extract_objects'):
             for i in tf.range(num_detections):
                 patch = img[boxes[i][0]:boxes[i][2], boxes[i][1]:boxes[i][3], 0]
+
+                orig_size = tf.cast(tf.shape(patch)[:2], tf.float32)
+                unscaled_sizes = unscaled_sizes.write(i, tf.reduce_max(orig_size))
+                patch_offsets = patch_offsets.write(i, (tf.constant([1.0, 1.0]) - orig_size / tf.reduce_max(orig_size)) / 2.0)
+
                 patch = tf.cast(resize_and_pad(tf.expand_dims(patch, -1), self._object_size), tf.float32) / 255.0
                 patches = patches.write(i, patch)
 
         with tf.name_scope('pin_detection'):
-            classes, sample_indices, pins, pin_cmp_ids = self._pin_model(patches.stack(), class_probabilities).values()
+            classes, sample_indices, pins, pin_cmp_ids = self._pin_model(patches.stack(), class_probabilities, unscaled_sizes.stack(), patch_offsets.stack()).values()
         
-        return {'classes': classes, 'sample_indices': sample_indices, 'pins': pins, 'pin_cmp_ids': pin_cmp_ids}
+        pins = tf.cast(pins, tf.int32) + tf.gather(boxes, tf.gather(sample_indices, pin_cmp_ids))[:, 1::-1]
+        boxes = tf.gather(boxes, sample_indices)
+
+        return {'img': tf.identity(img, 'img'), 'classes': tf.identity(classes, 'classes'), 'boxes': tf.identity(boxes, 'boxes'), 'pins': tf.identity(pins, 'pins'), 'pin_cmp_ids': tf.identity(pin_cmp_ids, 'pin_cmp_ids')}

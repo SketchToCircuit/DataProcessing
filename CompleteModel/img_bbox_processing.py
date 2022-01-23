@@ -25,7 +25,7 @@ def savely_decode_base64(base64: tf.Tensor):
     if tf.shape(img)[2] != 3:
         img = tf.repeat(tf.expand_dims(img[:, :, 0], axis=-1), 3, axis=2)
     
-    return img
+    return tf.ensure_shape(img, (None, None, 3), name='img')
 
 def resize_and_pad(img, size):
     img = tf.cast(255 - tf.image.resize_with_pad(255 - img, size, size, method=tf.image.ResizeMethod.AREA), tf.uint8)
