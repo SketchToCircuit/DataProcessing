@@ -14,10 +14,6 @@ def erode(img, size):
     return img
 
 def savely_decode_base64(base64: tf.Tensor):
-    # convert to web-safe base64
-    base64 = tf.strings.regex_replace(base64, '\+', '-')
-    base64 = tf.strings.regex_replace(base64, '\/', '_')
-
     raw = tf.io.decode_base64(base64)
 
     img = tf.io.decode_image(raw, expand_animations=False)

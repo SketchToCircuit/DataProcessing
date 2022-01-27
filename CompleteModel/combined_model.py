@@ -63,4 +63,4 @@ class CombinedModel(tf.Module):
         pins = tf.cast(pins, tf.int32) + tf.gather(boxes, tf.gather(sample_indices, pin_cmp_ids))[:, 1::-1]
         boxes = tf.gather(boxes, sample_indices)
 
-        return {'img': tf.identity(img, 'img'), 'classes': tf.identity(classes, 'classes'), 'boxes': tf.identity(boxes, 'boxes'), 'pins': tf.identity(pins, 'pins'), 'pin_cmp_ids': tf.identity(pin_cmp_ids, 'pin_cmp_ids')}
+        return {'classes': tf.identity(classes, 'classes'), 'boxes': tf.identity(boxes, 'boxes'), 'pins': tf.identity(pins, 'pins'), 'pin_cmp_ids': tf.identity(pin_cmp_ids, 'pin_cmp_ids')}

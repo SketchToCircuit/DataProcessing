@@ -24,9 +24,6 @@ with open('./CompleteModel/test.jpeg', "rb") as f:
 
 model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v11/saved_model', './PinDetection/exported/1')
 
-signature = {tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY : model.__call__.get_concrete_function(tf.TensorSpec((None), dtype=tf.string))}
-tf.saved_model.save(model, './CompleteModel/Exported', signature)
-
 writer = tf.summary.create_file_writer('./CompleteModel/Tensorboard')
 tf.summary.trace_on(graph=True, profiler=True)
 
