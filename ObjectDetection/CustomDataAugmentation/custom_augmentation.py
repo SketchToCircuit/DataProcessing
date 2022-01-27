@@ -90,17 +90,6 @@ def uneven_resize(img, span):
 
     return img
 
-def shearing(img, boxes, shearlevel):
-    img = tfa.image.shear_x(img,level=shearlevel, replace=[255, 255, 255])
-    #new bounding boxes are the sheared diagonal corner points of the bounding box
-    #Points are counteed counter cockwise beginning with left Top
-    boundingPoints = [tf.concat([boxes[0], boxes[1]]), tf.concat([boxes[2], boxes[1]]), tf.constant([boxes[2], boxes[3]]), tf.concat([boxes[0], boxes[3]])]
-    for i in range(4):
-        boundingPoints[i] = tf.matmul(boundingPoints[i], tf.constant([shearlevel,1],[0,1]))
-
-    boxes[0] = tf.minimum(boundingPoints[0],)
-    return img, boxes
-
 def resize_to_square(img, boxes, size=640):
     sf = tf.cast(size / tf.reduce_max(tf.shape(img)), tf.float32)
     boxes = boxes * tf.cast(tf.tile(tf.shape(img)[:2], [2]), tf.float32) * sf
