@@ -1,67 +1,105 @@
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, ClassVar
+from dataclasses import dataclass
 
-from Tools.export_tfrecords import export_circuits, export_label_map
 import Tools.PinDetection.pindetection as pd
 from Tools.squigglylines import * 
-from Tools.autoroute import *
 
 import random
 import numpy as np
 
-DROP_LINE_PERCENTAGE = 0.4
 PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 
-MAX_GRIDSIZE_OFFSET = 25
+RANDOM_LINES_MU = 3
+RANDOM_LINES_SIGMA = 2
+
+STUD_LENGTH = 70
+
+MAX_GRIDSIZE_OFFSET = 20
 GRIDSIZE = 170
+
+MIN_LEN_LINE_CROSSING = 150
 
 NUM_FILES = 20
 CIRCUITS_PER_FILE = 1000
-VALIDATION_NUM = 200
+VALIDATION_NUM = 150
 VAL_SRC_SPLIT = 0.1
 
 DEBUG = False
 
-def _bridgecircuit(compList: List[Tuple], conList: List[Tuple], components, pos):
-    cmps = []
+@dataclass
+class CirCmp:
+    type_id: str
+    cmp: pd.Component
+    pos: np.ndarray
 
-    for i in range(4):
-        allowed = ["C", "D", "C_P", "D_S", "D_Z", "L", "LED", "L", "R"]
-        while random_type not in allowed:
-            random_type = random.sample(components.keys(), k=1)[0]
-        cmps[i] = random.sample(components[random_type], k=1)[0]
-        cmps[i] = cmps.load()
-    
-    cmps: List[Component]
-    componentSize = int(random.randint(64,128))
-    #fpos = first position = the postition of combined bounding box
-    
-    randangle = random.randint(-2,2)
+@dataclass
+class Knot:
+    position: np.ndarray
+    radius: int
 
-    componentSize = int(random.randint(64,128))
+    def to_img(self):
+        img = np.full((2*self.radius, 2*self.radius), 255, dtype=np.uint8)
+        cv2.circle(img, (self.radius, self.radius), self.radius, 0, cv2.FILLED)
+        return img
 
-    cmps[0].scale(componentSize / np.max(cmps[0].component_img.shape))
-    cmps[0].rotate(45 + randangle)
+@dataclass
+class ConnLine:
+    thick: ClassVar[int] = 2
 
-    allowed = ["C", "D", "C_P", "D_S", "D_Z", "LED"]
+    start: np.ndarray
+    end: np.ndarray
+    persistent: bool = False
+    crossing: bool = False
 
-    for i in range(4):
-        if cmps[i].type() in allowed:
-            cmps[i].scale(int(componentSize * 0.5 / np.max(cmps[0].component_img.shape)))
+    def to_img(self):
+        change_thick = 0 if random.random() < 0.7 else 1
+        ConnLine.thick = (ConnLine.thick - 1 + change_thick) % 2 + 1
+
+        size = np.round(np.abs(self.start - self.end)).astype(int) + ConnLine.thick * 8 + 20
+        img = np.full(size[::-1], 255, dtype=np.uint8)
+        mid = (self.start + self.end) / 2.0
+        a = self.start - mid + size / 2.0
+        b = self.end - mid + size / 2.0
+
+        if self.crossing and random.random() < 0.5:
+            Lines.linecrossing(a[0], a[1], b[0], b[1], img, ConnLine.thick, 0)
         else:
-            cmps[i + 1].scale(int(componentSize / np.max(cmps[0].component_img.shape)))
-        cmps[i].rotate(45 + randangle + i * 90)
-    
-    #components get counted counter  clockwise
-    compList.append(CirCmp(cmps[0].type(), cmps[0], pos))
-    compList.append(CirCmp(cmps[1].type(), cmps[1], (pos[0], pos[1] + cmps[0].component_img.shape[0])))
-    compList.append(CirCmp(cmps[2].type(), cmps[2], (pos[0] + np.max(cmps[0].component_img[1], cmps[1].component_img[1]), pos[1] + cmps[0].component_img.shape[0])))
-    compList.append(CirCmp(cmps[3].type(), cmps[3], (pos[0] + np.max(cmps[0].component_img[1], cmps[1].component_img[1]), pos[1])))
+            Lines.squigglyline(a[0], a[1], b[0], b[1], img, ConnLine.thick, 0)
+        return img
 
-    compList.append(CirCmp("knot", None, None))
-    #compute knots
+@dataclass
+class RoutedCircuit:
+    components: List[CirCmp]
+    lines: List[ConnLine]
+    knots: List[Knot] = None
 
-def _augment(component: Component):
+    def offset_positions(self, offset):
+        for knot in self.knots:
+            knot.position -= offset
+        for line in self.lines:
+            line.start -= offset
+            line.end -= offset
+        for cmp in self.components:
+            cmp.pos -= offset
+
+    def convert_knot_cmp(self):
+        self.knots = self.knots if self.knots else []
+        for cmp in self.components:
+            if cmp.type_id == 'knot':
+                r = random.randint(2, 5)
+                self.knots.append(Knot(cmp.pos - r, r))
+
+        self.components[:] = [cmp for cmp in self.components if cmp.type_id != 'knot']
+
+    def mark_lines_crossing(self):
+        for line in self.lines:
+            if np.sum(np.square(np.abs(line.end - line.start))) > MIN_LEN_LINE_CROSSING**2:
+                line.crossing = True
+
+from Tools.render import *
+
+def _augment(component: pd.Component):
 
     if random.random() < 0.5:
         component.flip(vert=True)
@@ -88,6 +126,79 @@ def _augment(component: Component):
 
     component.rotate(angle)
 
+def _place_random_lines(width, height) -> List[ConnLine]:
+    result = []
+    for _ in range(max(int(np.random.normal(RANDOM_LINES_MU, RANDOM_LINES_SIGMA, 1)), 1)):
+        x1 = random.randint(0, width)
+        x2 = random.randint(0, width)
+        y1 = random.randint(0, height)
+        y2 = random.randint(0, height)
+        line = ConnLine(np.array([x1, y1]), np.array([x2, y2]), False)
+        result.append(line)
+    return result
+
+def _finalize_components(components: List[CirCmp], width, height) -> RoutedCircuit:
+    conn_lines: List[ConnLine] = _place_random_lines(width, height)
+    knots: List[CirCmp] = []
+
+    for cmp in components:
+        for pin in cmp.cmp.pins.values():
+            pos = pin.position + cmp.pos
+            direction = pin.direction
+
+            if random.random() < 0.8:
+                if random.random() < 0.5:
+                    if random.random() < 0.5:
+                        direction = pin.direction[::-1] * np.array([1, -1])
+                    else:
+                        direction = pin.direction[::-1] * np.array([-1, 1])
+                # directly attached stud
+                length = max(np.random.normal(STUD_LENGTH, 20), 5)
+                pos += length * direction
+                conn_lines.append(ConnLine(pin.position + cmp.pos, pos, persistent=True))
+            
+            # further branching
+            if random.random() < 0.6:
+                if random.random() < 0.5:
+                    # simple corner
+                    if random.random() < 0.5:
+                        direction = direction[::-1] * np.array([1, -1])
+                    else:
+                        direction = direction[::-1] * np.array([1, -1])
+                    length = max(np.random.normal(STUD_LENGTH * 1.5, 20), 5)
+                    conn_lines.append(ConnLine(pos, pos + length * direction, persistent=False))
+                else:
+                    # junction
+                    knots.append(CirCmp('knot', None, pos))
+                    del_1 = max(np.random.normal(STUD_LENGTH * 2, 40), 5) * direction
+                    del_2 = max(np.random.normal(STUD_LENGTH * 2, 40), 5) * direction[::-1] * np.array([1, -1])
+                    del_3 = max(np.random.normal(STUD_LENGTH * 2, 40), 5) * direction[::-1] * np.array([-1, 1])
+
+                    if random.random() < 0.3:
+                        # 4 way junction
+                        conn_lines.append(ConnLine(pos, pos + del_1, persistent=False))
+                        conn_lines.append(ConnLine(pos, pos + del_2, persistent=False))
+                        conn_lines.append(ConnLine(pos, pos + del_3, persistent=False))
+                    else:
+                        # drop one direction
+                        a = random.random()
+                        if a < 1/3:
+                            conn_lines.append(ConnLine(pos, pos + del_1, persistent=False))
+                            conn_lines.append(ConnLine(pos, pos + del_2, persistent=False))
+                        elif a < 2/3:
+                            conn_lines.append(ConnLine(pos, pos + del_1, persistent=False))
+                            conn_lines.append(ConnLine(pos, pos + del_3, persistent=False))
+                        else:
+                            conn_lines.append(ConnLine(pos, pos + del_2, persistent=False))
+                            conn_lines.append(ConnLine(pos, pos + del_3, persistent=False))
+
+    components.extend(knots)
+    circuit = RoutedCircuit(components, conn_lines)
+    circuit.convert_knot_cmp()
+    circuit.mark_lines_crossing()
+
+    return circuit
+
 def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=False):
     partamount = int(np.random.normal(PART_COUNT_MU, PART_COUNT_SIGMA, 1))
     if partamount < 3:
@@ -95,9 +206,7 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
 
     pos = ()
     compList: List[CirCmp] = []
-    conList: List[Tuple[CirCmp, Pin, CirCmp, Pin]] = []
-    unsatisfiedList = [] # sollte durch statisches array ersretzt werden
-    #randomly define colums and rows
+    # randomly define colums and rows
     rancols = random.randint(3, 7)
     ranrows = math.ceil(partamount / rancols)
 
@@ -108,8 +217,8 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
     for i in range(rancols):
         for j in range(ranrows):
             pos = (
-            j * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET),#X
-            i * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET))#Y
+            j * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET), #X
+            i * GRIDSIZE + random.randint(-MAX_GRIDSIZE_OFFSET, MAX_GRIDSIZE_OFFSET)) #Y
             
             random_type = random.choices([*components.keys()], weights=weights, k=1)[0]
             num_val = int(len(components[random_type]) * VAL_SRC_SPLIT)
@@ -126,7 +235,7 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
 
             #make some components bigger[by now only the OPV]
             bigger = ["OPV"]
-            componentSize = int(random.randint(64,128))
+            componentSize = int(random.randint(64, 128))
             if cmp.type in bigger:
                 cmp.scale((componentSize + 40) / np.max(cmp.component_img.shape))
             else:
@@ -137,45 +246,21 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
             newEntry = CirCmp(random_type, cmp, pos)
             compList.append(newEntry)
 
-    for i in range(partamount):
-        if len([*compList[i - 1].cmp.pins.values()]) == 3:
-            unsatisfiedList.append((i - 1, 2))#third pin
-        elif len([*compList[i - 1].cmp.pins.values()]) == 1:
-             unsatisfiedList.append((i - 1, 0))#thirst pin
-        else:
-            conList.append((
-               compList[i - 1],
-               [*compList[i - 1].cmp.pins.values()][1],
-               compList[i],
-               [*compList[i].cmp.pins.values()][0]
-            ))
-
-    for i in range(len(unsatisfiedList)):
-        conList.append((
-              compList[unsatisfiedList[i - 1][0]],
-              [*compList[unsatisfiedList[i - 1][0]].cmp.pins.values()][unsatisfiedList[i - 1][1]],
-              compList[unsatisfiedList[i][0]],
-              [*compList[unsatisfiedList[i][0]].cmp.pins.values()][unsatisfiedList[i][1]]
-            ))
-
-    for i in range(int(len(compList) * 0.5)):
-        compList.append(CirCmp("knot", None, None))
-        conList.append((compList[-1], None, compList[i], random.choice([*compList[i].cmp.pins.values()])))
-        conList.append((compList[-1], None, compList[i * 2], random.choice([*compList[i * 2].cmp.pins.values()])))
-
-    conList = random.sample(conList, int(len(conList) * ( 1 - DROP_LINE_PERCENTAGE)))
-
-    return(route(compList, conList))
+    return _finalize_components(compList, ranrows * GRIDSIZE, rancols * GRIDSIZE)
 
 if __name__ == '__main__':
+    from Tools.export_tfrecords import export_circuits, export_label_map
+
     export_label_map('./DataProcessing/ObjectDetection/data/label_map.pbtxt', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
     components = pd.import_components('./DataProcessing/pindetection_data/data.json')
 
     if DEBUG:
-        circ = _create_circuit(components)
-        cv2.imshow('', draw_routed_circuit(circ, labels=True))
-        cv2.waitKey(0)
+        for i in range(5):
+            circ = _create_circuit(components)
+            cv2.imshow('', draw_routed_circuit(circ, labels=True))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
         exit()
 
     val_cirucits: List[RoutedCircuit] = [None] * VALIDATION_NUM

@@ -8,7 +8,7 @@ import cv2
 import random
 
 from .dataset_utils import *
-from .autoroute import RoutedCircuit
+from synthesis import RoutedCircuit
 from .render import draw_routed_circuit
 from .split_circuits import split_circuit
 

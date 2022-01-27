@@ -2,9 +2,9 @@ from typing import List, Set
 import numpy as np
 import cv2
 
-from .autoroute import RoutedCircuit
+from synthesis import RoutedCircuit
 
-COMPONENT_BORDER = 21
+COMPONENT_BORDER = 30
 
 def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
     images: List[np.ndarray] = []

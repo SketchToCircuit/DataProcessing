@@ -67,10 +67,6 @@ def warp_random(img, strength):
     img = tfa.image.dense_image_warp(img, rand_flow)
     return tf.squeeze(img, 0)
 
-def warp_sinusoidal(img, strength):
-    #TODO
-    return img
-
 def noise_normal(img, strength):
     img = img + tf.random.normal(tf.shape(img), mean=0.0, stddev=strength, dtype=tf.float32)
     img = tf.clip_by_value(img, 0, 255)
@@ -82,23 +78,15 @@ def noise_uniform(img, strength):
     return img
 
 def uneven_resize(img, span):
-    # 50% probability for scaling height 50/50
+    # 50% probability for scaling height
     if tf.random.uniform([]) < 0.5:
-        newsize = [
-        tf.cast(tf.cast(tf.shape(img)[1],tf.float32) * tf.random.uniform([],minval=1 -span, maxval=1 + span),tf.int32),
-        tf.shape(img)[0]]
+        newsize = tf.cast(tf.shape(img)[:2], tf.float32) * (tf.stack([0, tf.random.uniform([], -span, span)], 0) + 1)
     else:
-         newsize = [
-        tf.cast(tf.cast(tf.shape(img)[0],tf.float32) * tf.random.uniform([],minval=1 -span, maxval=1 + span),tf.int32),
-        tf.shape(img)[1]]
+        newsize = tf.cast(tf.shape(img)[:2], tf.float32) * (tf.stack([tf.random.uniform([], -span, span), 0], 0) + 1)
     
-    r = tf.random.uniform([])
-    if r < 1/3:
-        img = resize_antialiased(img, newsize, tf.image.ResizeMethod.AREA, tf.random.uniform([]) < 0.5)
-    elif r < 2/3:
-        img = resize_antialiased(img, newsize, tf.image.ResizeMethod.BICUBIC, tf.random.uniform([]) < 0.5)
-    else:
-        img = resize_antialiased(img, newsize, tf.image.ResizeMethod.NEAREST_NEIGHBOR, tf.random.uniform([]) < 0.5)
+    newsize = tf.cast(newsize, tf.int32)
+
+    img = resize_antialiased(img, newsize, tf.image.ResizeMethod.AREA, tf.random.uniform([]) < 0.5)
 
     return img
 
@@ -146,20 +134,11 @@ def augment(image, boxes):
 
     # 30% image warping
     if tf.random.uniform([]) < 0.3:
-        # 50% random (normal distributed) warping
-        if tf.random.uniform([]) < 0.5:
-            image = warp_random(image, tf.random.uniform([], minval=0.2, maxval=1.3)) # random strength
-        # 50% sinusoidal warping (not implemented yet)
-        else:
-            image = warp_sinusoidal(image, tf.random.uniform([], minval=0, maxval=1)) # random strength
+        image = warp_random(image, tf.random.uniform([], minval=0.2, maxval=1.3)) # random strength
 
-    # 40% shearing
-    # if tf.random.uniform([]) < 0.0:
-    #     image, boxes = shearing(image, boxes, 0.4)
-
-    # # 30% resize Picture uneven
-    # if tf.random.uniform([]) < 0.0:
-    #     image = uneven_resize(image, span=0.1)
+    # 50% resize Picture uneven
+    if tf.random.uniform([]) < 0.5:
+        image = uneven_resize(image, span=0.8)
 
     # resize and pad to square
     image, boxes = resize_to_square(image, boxes, 640)
@@ -228,4 +207,4 @@ def test(path: str, num_samples: int):
         cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    test('./ObjectDetection/data/train-0.tfrecord', 5)
+    test('./ObjectDetection/data/train-2.tfrecord', 5)
