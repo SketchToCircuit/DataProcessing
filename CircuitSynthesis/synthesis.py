@@ -10,13 +10,10 @@ import numpy as np
 PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
 
-RANDOM_LINES_MU = 3
-RANDOM_LINES_SIGMA = 2
-
 STUD_LENGTH = 70
 
-MAX_GRIDSIZE_OFFSET = 20
-GRIDSIZE = 170
+MAX_GRIDSIZE_OFFSET = 30
+GRIDSIZE = 150
 
 MIN_LEN_LINE_CROSSING = 150
 
@@ -122,23 +119,12 @@ def _augment(component: pd.Component):
     else:
         angle = random.choice([0.0, 90.0, -90.0, 180.0])
     
-    angle += np.random.normal(0, 10)
+    angle += np.random.normal(0, 5)
 
     component.rotate(angle)
 
-def _place_random_lines(width, height) -> List[ConnLine]:
-    result = []
-    for _ in range(max(int(np.random.normal(RANDOM_LINES_MU, RANDOM_LINES_SIGMA, 1)), 1)):
-        x1 = random.randint(0, width)
-        x2 = random.randint(0, width)
-        y1 = random.randint(0, height)
-        y2 = random.randint(0, height)
-        line = ConnLine(np.array([x1, y1]), np.array([x2, y2]), False)
-        result.append(line)
-    return result
-
 def _finalize_components(components: List[CirCmp], width, height) -> RoutedCircuit:
-    conn_lines: List[ConnLine] = _place_random_lines(width, height)
+    conn_lines: List[ConnLine] = []
     knots: List[CirCmp] = []
 
     for cmp in components:
@@ -158,8 +144,8 @@ def _finalize_components(components: List[CirCmp], width, height) -> RoutedCircu
                 conn_lines.append(ConnLine(pin.position + cmp.pos, pos, persistent=True))
             
             # further branching
-            if random.random() < 0.6:
-                if random.random() < 0.5:
+            if random.random() < 0.5:
+                if random.random() < 0.7:
                     # simple corner
                     if random.random() < 0.5:
                         direction = direction[::-1] * np.array([1, -1])
@@ -174,7 +160,7 @@ def _finalize_components(components: List[CirCmp], width, height) -> RoutedCircu
                     del_2 = max(np.random.normal(STUD_LENGTH * 2, 40), 5) * direction[::-1] * np.array([1, -1])
                     del_3 = max(np.random.normal(STUD_LENGTH * 2, 40), 5) * direction[::-1] * np.array([-1, 1])
 
-                    if random.random() < 0.3:
+                    if random.random() < 0.2:
                         # 4 way junction
                         conn_lines.append(ConnLine(pos, pos + del_1, persistent=False))
                         conn_lines.append(ConnLine(pos, pos + del_2, persistent=False))

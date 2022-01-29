@@ -21,7 +21,7 @@ def draw_routed_circuit(circuit: RoutedCircuit, labels=False):
         sizes.append(cmp.cmp.component_img.shape[::-1])
 
         if labels:
-            others.add(len(images))
+            persistent.add(len(images))
             images.append(cmp.cmp.label_img)
             positions.append(cmp.pos + cmp.cmp.label_offset)
             sizes.append(cmp.cmp.label_img.shape[::-1])

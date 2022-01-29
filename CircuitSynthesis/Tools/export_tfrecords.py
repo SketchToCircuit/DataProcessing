@@ -35,8 +35,8 @@ def export_label_map(dest_path, src_path: str = 'ObjectDetection/fine_to_coarse_
             f.write(f'item {{\n\tid: {int(id)}\n\tname: "{name}"\n}}\n')
 
 def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str, int]]):
-    # 50% with label
-    img = draw_routed_circuit(circ, labels=(random.random() < 0.5))
+    # 70% with label
+    img = draw_routed_circuit(circ, labels=(random.random() < 0.7))
 
     bboxs = [(cmp.pos[0], cmp.pos[1], cmp.cmp.component_img.shape[1] + cmp.pos[0], cmp.cmp.component_img.shape[0]+ cmp.pos[1]) for cmp in circ.components]
     
