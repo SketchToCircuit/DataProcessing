@@ -1,4 +1,3 @@
-from numpy import float32
 import tensorflow as tf
 
 def rotate_vector(vec: tf.Tensor, angle: tf.Tensor):
@@ -24,7 +23,7 @@ def k_out_of_n_combinations(k: tf.Tensor, n: tf.Tensor):
             return tf.constant([], tf.int32)
 
         # num_comb = n over k
-        num_comb = tf.cast(tf.round(tf.exp(tf.math.lgamma(tf.cast(n + 1, float32)) - tf.math.lgamma(tf.cast(n - k + 1, float32)) - tf.math.lgamma(tf.cast(k + 1, float32)))), tf.int32)
+        num_comb = tf.cast(tf.round(tf.exp(tf.math.lgamma(tf.cast(n + 1, tf.float32)) - tf.math.lgamma(tf.cast(n - k + 1, tf.float32)) - tf.math.lgamma(tf.cast(k + 1, tf.float32)))), tf.int32)
 
         def next_combination(c):
             # increment last index number if possible

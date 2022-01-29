@@ -25,7 +25,7 @@ class ObjectDetectionModel(tf.Module):
             tf.expand_dims((1.0 - detections['detection_scores']) / self._num_classes, axis=-1))
 
         # combine original scores and selected scores
-        multiclass_scores = multiclass_scores * 0.3 + orig_redistributed_scores * 0.7
+        multiclass_scores = multiclass_scores * 0.7 + orig_redistributed_scores * 0.3
 
         # choose single object scores
         combined_scores = tf.squeeze(tf.gather(multiclass_scores, tf.where(self._other_obj_mask == 1), axis=2), axis=-1)

@@ -1,11 +1,9 @@
-from turtle import pos
-from typing import Tuple
-import tensorflow as tf
-import numpy as np
-import sleap
 import math
+from typing import Tuple
 
-from img_bbox_processing import erode
+import sleap
+import tensorflow as tf
+
 import helper
 
 class PinDetectionModel(tf.Module):

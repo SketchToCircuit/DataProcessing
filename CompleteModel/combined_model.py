@@ -1,19 +1,4 @@
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-
-import cv2
-import numpy as np
-from object_detection.utils import label_map_util
-
 import tensorflow as tf
-
-tf.config.optimizer.set_jit(True)
-
-physical_devices = tf.config.list_physical_devices("GPU")
-if len(physical_devices) > 0:
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-else:
-    print("No GPU detected!")
 
 from img_bbox_processing import MergeBoxes, SplitImage, resize_and_pad, savely_decode_base64
 from detection_model import ObjectDetectionModel

@@ -1,13 +1,11 @@
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 import cv2
 import numpy as np
 import base64
 
 import tensorflow as tf
-from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
-import tensorboard
 
 tf.config.optimizer.set_jit(True)
 
@@ -22,12 +20,12 @@ from combined_model import CombinedModel
 with open('./CompleteModel/test.jpeg', "rb") as f:
     img_encoded = base64.b64encode(f.read())
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v11/saved_model', './PinDetection/exported/1')
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1')
 
 writer = tf.summary.create_file_writer('./CompleteModel/Tensorboard')
 tf.summary.trace_on(graph=True, profiler=True)
 
-img, classes, boxes, pins, pin_cmp_ids = model(img_encoded).values()
+classes, boxes, pins, pin_cmp_ids = model(img_encoded).values()
 
 with writer.as_default():
   tf.summary.trace_export(
@@ -35,7 +33,7 @@ with writer.as_default():
       step=0,
       profiler_outdir='./CompleteModel/Tensorboard')
 
-img = img.numpy()
+img = cv2.imread('./CompleteModel/test.jpeg', cv2.IMREAD_COLOR)
 
 for box in boxes.numpy():
     img = cv2.rectangle(img, (box[1], box[0]), (box[3], box[2]), (0, 0, 255), thickness=2)

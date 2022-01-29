@@ -10,7 +10,7 @@ else:
 
 from combined_model import CombinedModel
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v11/saved_model', './PinDetection/exported/1')
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1')
 
 signature = {tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY : model.__call__.get_concrete_function(tf.TensorSpec((None), dtype=tf.string))}
 tf.saved_model.save(model, './CompleteModel/Exported/1', signature)
