@@ -35,7 +35,6 @@ class PinDetectionModel(tf.Module):
 
                 class_id = tf.argmax(class_proposals[i], output_type=tf.int32)
                 pins = PinDetectionModel._assert_correct_pin_count(pins, pin_vals, class_id)
-                pins = tf.clip_by_value(pins, 0.0, 1.0)
                 
                 if tf.size(pins) != 0:                
                     classes_arr = classes_arr.write(classes_arr.size(), class_id)
@@ -47,7 +46,7 @@ class PinDetectionModel(tf.Module):
                         pins_arr = pins_arr.write(pins_arr.size(), pin)
                         pin_cmp_ids = pin_cmp_ids.write(pin_cmp_ids.size(), classes_arr.size() - 1)
 
-        return {'classes': classes_arr.stack(), 'sample_ind': batch_ids_arr.stack(), 'pins': pins_arr.stack(), 'pin_cmp_ids': pin_cmp_ids.stack()}
+        return classes_arr.stack(), batch_ids_arr.stack(), pins_arr.stack(), pin_cmp_ids.stack()
     
     @staticmethod
     def _transform_pin_positions(pins: tf.Tensor, unscaled_size: tf.Tensor, patch_offset: tf.Tensor):
