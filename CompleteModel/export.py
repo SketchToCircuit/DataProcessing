@@ -1,8 +1,5 @@
 import os
 
-# enable XLA for the CPU
-os.environ['TF_XLA_FLAGS'] = '--tf_xla_cpu_global_jit'
-
 # magic optimization
 os.environ['CUDA_CACHE_DISABLE'] = '0'
 os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
@@ -15,7 +12,6 @@ if len(physical_devices) > 0:
 else:
     print("No GPU detected!")
 
-tf.config.optimizer.set_jit(True)
 tf.config.optimizer.set_experimental_options({
     'layout_optimizer': True,
     'constant_folding': True,

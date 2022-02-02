@@ -1,20 +1,6 @@
 from typing import Tuple
 import tensorflow as tf
 
-def savely_decode_base64(base64: tf.Tensor):
-    # convert to web-safe base64
-    base64 = tf.strings.regex_replace(base64, '\+', '-')
-    base64 = tf.strings.regex_replace(base64, '\/', '_')
-
-    raw = tf.io.decode_base64(base64)
-
-    img = tf.io.decode_image(raw, expand_animations=False)
-
-    if tf.shape(img)[2] != 3:
-        img = tf.repeat(tf.expand_dims(img[:, :, 0], axis=-1), 3, axis=2)
-    
-    return tf.ensure_shape(img, (None, None, 3), name='img')
-
 def resize_and_pad(img, size):
     img = tf.cast(255 - tf.image.resize_with_pad(255 - img, size, size, method=tf.image.ResizeMethod.AREA), tf.uint8)
     return img
@@ -25,8 +11,8 @@ class MergeBoxes():
 
     @tf.function(input_signature=[tf.TensorSpec(shape=(None, 4), dtype=tf.float32), tf.TensorSpec(shape=(None,), dtype=tf.int32), tf.TensorSpec(shape=(None, 2), dtype=tf.int32), tf.TensorSpec(shape=(2), dtype=tf.int32)])
     def __call__(self, boxes, img_indices, offsets, sub_size):
-        sf = tf.cast(tf.reduce_max(sub_size / self._src_size), tf.float32)
-        per_patch_pad_offset = tf.clip_by_value(640 - tf.cast(sub_size, tf.float32) / sf, 0.0, self._src_size) / 2.0
+        sf = tf.cast(tf.reduce_max(sub_size / self._src_size), tf.float32)        
+        per_patch_pad_offset = tf.clip_by_value(self._src_size - tf.cast(sub_size, tf.float32) / sf, 0.0, self._src_size) / 2.0
         per_patch_pad_offset = tf.tile(per_patch_pad_offset, [2])
 
         patch_positions = tf.ensure_shape(tf.gather(offsets, img_indices), (None, 2))

@@ -57,12 +57,6 @@ class FuseBoxes(tf.Module):
             combined_class = tf.argmax(combined_score)
             original_score = original_scores[box_id]
 
-            # remove start box from boxes
-            boxes = remove_idx_from_tensor(boxes, box_id)
-            combined_scores = remove_idx_from_tensor(combined_scores, box_id)
-            original_scores = remove_idx_from_tensor(original_scores, box_id)
-            num_boxes = num_boxes - 1
-
             # IoU and overlap coeff.
             iou, oc = iou_overlap_coeff(boxes, box)
             overlap = iou * 0.4 + oc * 0.6
@@ -74,19 +68,24 @@ class FuseBoxes(tf.Module):
             cluster_indices = tf.squeeze(tf.where(overlap * same_class > overlap_threshold), axis=-1)
 
             # get selected boxes, scores and weights (including starter box)
-            selected_boxes = tf.concat([tf.gather(boxes, cluster_indices), box[None, :]], axis=0)
-            selected_scores = tf.concat([tf.gather(original_scores, cluster_indices), original_score[None, :]], axis=0)
-            selected_combined_scores = tf.concat([tf.gather(combined_scores, cluster_indices), combined_score[None, :]], axis=0)
-            weights = tf.concat([tf.gather(overlap * combined_scores[:, combined_class], cluster_indices), combined_score[None, combined_class] * 0.8], axis=0)
+            selected_boxes = tf.gather(boxes, cluster_indices)
+            selected_scores = tf.gather(original_scores, cluster_indices)
+            selected_combined_scores = tf.gather(combined_scores, cluster_indices)
+
+            # calculate weights (prefer small boxes with high overlap, and high scores)
+            score_overlap_w = tf.gather(overlap * combined_scores[:, combined_class], cluster_indices)
+            size_scores = 1.0 / tf.cast((selected_boxes[:, 2] - selected_boxes[:, 0]) * (selected_boxes[:, 3] - selected_boxes[:, 1]), tf.float32)
+            weights = score_overlap_w / tf.reduce_sum(score_overlap_w) * 0.7 + size_scores / tf.reduce_sum(size_scores) * 0.3
 
             # calculate weighted boxes and scores
-            avg_box = tf.cast(tf.reduce_sum(tf.cast(selected_boxes, tf.float32) * weights[:, None], axis=0) / tf.reduce_sum(weights), tf.int32)
-            avg_scores = tf.reduce_sum(selected_scores * weights[:, None], axis=0) / tf.reduce_sum(weights)
-            avg_combined_scores = tf.reduce_sum(selected_combined_scores * weights[:, None], axis=0) / tf.reduce_sum(weights)
+            avg_box = tf.cast(tf.reduce_sum(tf.cast(selected_boxes, tf.float32) * weights[:, None], axis=0), tf.int32)
+            avg_scores = tf.reduce_sum(selected_scores * weights[:, None], axis=0)
+            avg_combined_scores = tf.reduce_sum(selected_combined_scores * weights[:, None], axis=0)
 
             # calculate certainty for this cluster
-            certainty = avg_combined_scores[combined_class] * 0.6 + \
-                        (1.0 - 1.0 / tf.cast((tf.size(cluster_indices) + 1), tf.float32)) * 0.4
+            certainty = avg_combined_scores[combined_class] * 0.35 + \
+                        (1.0 - 1.0 / tf.cast((tf.size(cluster_indices) + 1), tf.float32)) * 0.55 + \
+                        tf.reduce_max(avg_scores) * 0.1
 
             # append these boxes and scores to result
             resulting_boxes = tf.concat([resulting_boxes, avg_box[None, :]], axis=0)
