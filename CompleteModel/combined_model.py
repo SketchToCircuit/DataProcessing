@@ -1,3 +1,5 @@
+from typing import Dict
+
 import tensorflow as tf
 
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
@@ -11,13 +13,18 @@ from box_fusion import FuseBoxes
 NUM_CLASSES = 42 # without background
 
 class CombinedModel(tf.Module):
-    def __init__(self, object_model_path, pin_model_path, patch_size=640, object_size=64):
+    def __init__(self, object_model_path, pin_model_path, patch_size=640, object_size=64, hyperparameters=None, do_not_convert_variables=False):
         obj_model = ObjectDetectionModel(object_model_path)
-        pin_model = PinDetectionModel(pin_model_path)
+        pin_model = PinDetectionModel(pin_model_path, hyperparameters=hyperparameters)
 
-        self._obj_model_func = convert_variables_to_constants_v2(obj_model.__call__.get_concrete_function())
-        self._pin_model_func = convert_variables_to_constants_v2(pin_model.__call__.get_concrete_function())
+        if do_not_convert_variables:
+            self._obj_model_func = obj_model
+            self._pin_model_func = pin_model
+        else:
+            self._obj_model_func = convert_variables_to_constants_v2(obj_model.__call__.get_concrete_function())
+            self._pin_model_func = convert_variables_to_constants_v2(pin_model.__call__.get_concrete_function())
         self._ensemble_augmentor = EnsembleAugmentor()
+        self._box_fusion = FuseBoxes(hyperparameters)
         self._patch_size: int = patch_size
         self._object_size = object_size
 
@@ -47,7 +54,7 @@ class CombinedModel(tf.Module):
             boxes = tf.minimum(boxes, tf.tile(tf.shape(image)[:2], [2]) - 1)
 
         with tf.name_scope('box_fusion'):
-            boxes, class_probabilities = FuseBoxes()(boxes, class_probabilities)
+            boxes, class_probabilities = self._box_fusion(boxes, class_probabilities)
 
         num_detections = tf.shape(boxes)[0]
         patches = tf.TensorArray(tf.float32, size=0, dynamic_size=True, element_shape=tf.TensorShape((self._object_size, self._object_size, 1)))

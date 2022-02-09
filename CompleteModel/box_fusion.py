@@ -7,9 +7,21 @@ from helper import remove_idx_from_tensor, remove_indices_from_tensor, iou_overl
 class FuseBoxes(tf.Module):
     NUM_COMBINED_CLASSES = 17
 
-    def __init__(self):
+    def __init__(self, hyperparameters=None):
         super().__init__(name='FuseBoxes')
         self._other_obj_mask, self._combined_object_masks = self._get_combined_object_masks()
+
+        if hyperparameters is None:
+            hyperparameters = {
+                'box_final_thresh': 0.6,
+                'box_overlap_thresh': 0.4,
+                'box_iou_weight': 0.4,
+                'box_weighting_overlap': 0.7,
+                'box_certainty_cluster_count': 0.6,
+                'box_certainty_combined_scores': 0.7
+            }
+
+        self._hyperparameters = hyperparameters
 
     @tf.function(input_signature=[tf.TensorSpec(shape=(None, 4), dtype=tf.int32), tf.TensorSpec(shape=(None,42), dtype=tf.float32)], experimental_follow_type_hints=True)
     def __call__(self, boxes, scores):
@@ -24,17 +36,16 @@ class FuseBoxes(tf.Module):
 
         combined_scores = tf.ensure_shape(combined_scores, (None, FuseBoxes.NUM_COMBINED_CLASSES))
 
-        boxes, scores, certainty = FuseBoxes._custom_fusion(boxes, combined_scores, scores, overlap_threshold=0.4)
+        boxes, scores, certainty = self._custom_fusion(boxes, combined_scores, scores, overlap_threshold=self._hyperparameters['box_overlap_thresh'])
 
-        final_indices = tf.squeeze(tf.where(certainty > 0.6), axis=1)
+        final_indices = tf.squeeze(tf.where(certainty > self._hyperparameters['box_final_thresh']), axis=1)
 
         boxes = tf.gather(boxes, final_indices, axis=0)
         scores = tf.gather(scores, final_indices, axis=0)
 
         return boxes, scores
   
-    @staticmethod
-    def _custom_fusion(boxes, combined_scores, original_scores, overlap_threshold=0.5):
+    def _custom_fusion(self, boxes, combined_scores, original_scores, overlap_threshold=0.5):
         # custom box fusion as a combination of WBF, NMS, and accepts completely enclosed objects as part of a cluster
         resulting_boxes = tf.zeros((0,4), tf.int32)
         resulting_scores = tf.zeros((0,42), tf.float32)
@@ -59,7 +70,7 @@ class FuseBoxes(tf.Module):
 
             # IoU and overlap coeff.
             iou, oc = iou_overlap_coeff(boxes, box)
-            overlap = iou * 0.4 + oc * 0.6
+            overlap = iou * self._hyperparameters['box_iou_weight'] + oc * (1.0 - self._hyperparameters['box_iou_weight'])
 
             # mask for objects with the same (combined) class
             same_class = tf.where(tf.argmax(combined_scores, axis=-1) == combined_class, 1.0, 0.0)
@@ -75,7 +86,8 @@ class FuseBoxes(tf.Module):
             # calculate weights (prefer small boxes with high overlap, and high scores)
             score_overlap_w = tf.gather(overlap * combined_scores[:, combined_class], cluster_indices)
             size_scores = 1.0 / tf.cast((selected_boxes[:, 2] - selected_boxes[:, 0]) * (selected_boxes[:, 3] - selected_boxes[:, 1]), tf.float32)
-            weights = score_overlap_w / tf.reduce_sum(score_overlap_w) * 0.7 + size_scores / tf.reduce_sum(size_scores) * 0.3
+            weights =   score_overlap_w / tf.reduce_sum(score_overlap_w) * self._hyperparameters['box_weighting_overlap'] + \
+                        size_scores / tf.reduce_sum(size_scores) * ( 1.0 - self._hyperparameters['box_weighting_overlap'])
 
             # calculate weighted boxes and scores
             avg_box = tf.cast(tf.reduce_sum(tf.cast(selected_boxes, tf.float32) * weights[:, None], axis=0), tf.int32)
@@ -83,9 +95,9 @@ class FuseBoxes(tf.Module):
             avg_combined_scores = tf.reduce_sum(selected_combined_scores * weights[:, None], axis=0)
 
             # calculate certainty for this cluster
-            certainty = avg_combined_scores[combined_class] * 0.35 + \
-                        (1.0 - 1.0 / tf.cast((tf.size(cluster_indices) + 1), tf.float32)) * 0.55 + \
-                        tf.reduce_max(avg_scores) * 0.1
+            certainty = (1.0 - 1.0 / tf.cast((tf.size(cluster_indices) + 1), tf.float32)) * self._hyperparameters['box_certainty_cluster_count'] + \
+                        (avg_combined_scores[combined_class] * self._hyperparameters['box_certainty_combined_scores'] + \
+                        tf.reduce_max(avg_scores) * (1.0 - self._hyperparameters['box_certainty_combined_scores'])) * (1.0 - self._hyperparameters['box_certainty_cluster_count'])
 
             # append these boxes and scores to result
             resulting_boxes = tf.concat([resulting_boxes, avg_box[None, :]], axis=0)

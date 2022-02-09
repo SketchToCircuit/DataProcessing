@@ -29,7 +29,18 @@ tf.config.optimizer.set_experimental_options({
 
 from combined_model import CombinedModel
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1')
+hyperparameters = {
+    'pin_peak_thresh': 0.2,
+    'pin_val_weight': 0.5,
+    'box_final_thresh': 0.5,
+    'box_overlap_thresh': 0.3,
+    'box_iou_weight': 0.1,
+    'box_weighting_overlap': 0.8,
+    'box_certainty_cluster_count': 0.3,
+    'box_certainty_combined_scores': 0.2
+}
+
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
 
 signature = {tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY : model.__call__.get_concrete_function(tf.TensorSpec((None), dtype=tf.string))}
 tf.saved_model.save(model, './CompleteModel/Exported/1', signature)

@@ -7,12 +7,20 @@ import tensorflow as tf
 import helper
 
 class PinDetectionModel(tf.Module):
-    def __init__(self, saved_model_path, num_classes=42):
+    def __init__(self, saved_model_path, num_classes=42, hyperparameters=None):
         super().__init__(name='PinDetectionModel')
         self._model = tf.keras.models.load_model(saved_model_path)
         self._img_size: Tuple[int, int] = [input.type_spec.shape[1:3] for input in self._model.inputs if input.name=='input1'][0]
         self._num_classes = num_classes
         assert [input.type_spec.shape[1] for input in self._model.inputs if input.name=='input2'][0] == self._num_classes
+
+        if hyperparameters is None:
+            hyperparameters = {
+                'pin_peak_thresh': 0.2,
+                'pin_val_weight': 0.5
+            }
+
+        self._hyperparameters = hyperparameters
 
     @tf.function(input_signature=[tf.TensorSpec((None, None, None, 1), dtype=tf.float32), tf.TensorSpec((None, 42), dtype=tf.float32), tf.TensorSpec((None,), dtype=tf.float32), tf.TensorSpec((None, 2), dtype=tf.float32)], experimental_follow_type_hints=True)
     def __call__(self, imges: tf.Tensor, class_proposals: tf.Tensor, unscaled_sizes: tf.Tensor, patch_offsets: tf.Tensor):
@@ -20,7 +28,7 @@ class PinDetectionModel(tf.Module):
         heatmaps = self._model({"input1": imges, "input2": class_proposals})
 
         # get local maxima (order x,y)
-        peak_pos, peak_vals, batch_ind, _ = sleap.nn.peak_finding.find_local_peaks(heatmaps, threshold=0.2, refinement='integral')
+        peak_pos, peak_vals, batch_ind, _ = sleap.nn.peak_finding.find_local_peaks(heatmaps, threshold=self._hyperparameters['pin_peak_thresh'], refinement='integral')
         peak_pos = peak_pos / tf.cast(tf.shape(heatmaps)[1], tf.float32)
 
         classes_arr = tf.TensorArray(tf.int32, size=0, dynamic_size=True, element_shape=tf.TensorShape((None)))
@@ -35,7 +43,7 @@ class PinDetectionModel(tf.Module):
 
                 class_id = tf.argmax(class_proposals[i], output_type=tf.int32)
 
-                pins = PinDetectionModel._assert_correct_pin_count(pins, pin_vals, class_id)
+                pins = self._assert_correct_pin_count(pins, pin_vals, class_id)
             
                 if tf.size(pins) != 0:                
                     classes_arr = classes_arr.write(classes_arr.size(), class_id)
@@ -70,8 +78,7 @@ class PinDetectionModel(tf.Module):
                         2, 2, 2, 2, 2,
                         2, 2], dtype=tf.int32, name='ID_TO_NUM_PINS')
 
-    @staticmethod
-    def _assert_correct_s3(pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_s3(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         # cannot reliable reconstruct with 1 pin
         if num_pins == 1:
             return tf.constant([])
@@ -101,7 +108,7 @@ class PinDetectionModel(tf.Module):
                     if pos_error < min_pos_error:
                         min_pos_error = pos_error
 
-                score = tf.reduce_mean(tf.gather(pin_vals, indices)) - min_pos_error
+                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - min_pos_error * (1.0 - self._hyperparameters['pin_val_weight'])
                 
                 if score > max_score:
                     best_pins = tf.ensure_shape(tf.gather_nd(pins, tf.expand_dims(indices, -1)), (3,2))
@@ -109,8 +116,7 @@ class PinDetectionModel(tf.Module):
 
             return best_pins
 
-    @staticmethod
-    def _assert_correct_mic_spk(pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_mic_spk(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         if num_pins == 1:
             if (tf.abs(norm_directions[0][0]) > tf.abs(norm_directions[0][1])):
                 # dx is bigger than dy -> new pin is flipped on y-axis
@@ -132,7 +138,7 @@ class PinDetectionModel(tf.Module):
                 # positional error for vertical flipping
                 pos_error_v = helper.vector_length(directions[a] * tf.constant([1.0, -1.0]) - directions[b]) + helper.vector_length(directions[b] * tf.constant([1.0, -1.0]) - directions[a])
                 
-                score = tf.reduce_mean(tf.gather(pin_vals, indices)) - tf.minimum(pos_error_h, pos_error_v)[0] / 2.0
+                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - (tf.minimum(pos_error_h, pos_error_v)[0] / 2.0) * (1.0 - self._hyperparameters['pin_val_weight'])
 
                 if score > max_score:
                     best_pins = tf.ensure_shape(tf.gather_nd(pins, tf.expand_dims(indices, -1)), (2,2))
@@ -140,8 +146,7 @@ class PinDetectionModel(tf.Module):
 
             return best_pins
 
-    @staticmethod
-    def _assert_correct_pot(pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_pot(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         # cannot reliable reconstruct with 1 or 2 pins
         if num_pins == 1 or num_pins == 2:
             return tf.constant([])
@@ -163,7 +168,7 @@ class PinDetectionModel(tf.Module):
                     if pos_error < min_pos_error:
                         min_pos_error = pos_error
 
-                score = tf.reduce_mean(tf.gather(pin_vals, indices)) - min_pos_error
+                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - min_pos_error * (1.0 - self._hyperparameters['pin_val_weight'])
 
                 if score > max_score:
                     best_pins = tf.ensure_shape(tf.gather_nd(pins, tf.expand_dims(indices, -1)), (3,2))
@@ -171,8 +176,7 @@ class PinDetectionModel(tf.Module):
 
             return best_pins
 
-    @staticmethod
-    def _assert_correct_generic_two(pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_generic_two(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         if num_pins == 1:
             new_pin = tf.constant([0.5, 0.5], tf.float32) - directions[0]
             return tf.concat([pins, tf.expand_dims(new_pin, 0)], axis=0)
@@ -182,7 +186,7 @@ class PinDetectionModel(tf.Module):
 
             for indices in helper.k_out_of_n_combinations(2, num_pins):
                 pos_error = helper.vector_length(directions[indices[0]] + directions[indices[1]])
-                score = tf.reduce_mean(tf.gather(pin_vals, indices)) - pos_error[0]
+                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - pos_error[0] * (1.0 - self._hyperparameters['pin_val_weight'])
 
                 if score > max_score:
                     best_pins = tf.ensure_shape(tf.gather_nd(pins, tf.expand_dims(indices, -1)), (2,2))
@@ -190,8 +194,7 @@ class PinDetectionModel(tf.Module):
 
             return best_pins
 
-    @staticmethod
-    def _assert_correct_generic_three(pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_generic_three(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         if num_pins == 1:
             dir_1 = helper.rotate_vector(tf.expand_dims(directions[0], 0), 2.0 / 3.0 * math.pi)
             dir_2 = helper.rotate_vector(tf.expand_dims(directions[0], 0), 4.0 / 3.0 * math.pi)
@@ -210,7 +213,7 @@ class PinDetectionModel(tf.Module):
                 a_3 = tf.math.acos(tf.tensordot(norm_directions[indices[2]], norm_directions[indices[0]], 1))
                 angle_error = (tf.abs(a_1 - 2.0/3.0*math.pi) + tf.abs(a_2 - 2.0/3.0*math.pi) + tf.abs(a_3 - 2.0/3.0*math.pi)) / 3.0
 
-                score = tf.reduce_mean(tf.gather(pin_vals, indices)) - pos_error - angle_error
+                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - (pos_error + angle_error) * (1.0 - self._hyperparameters['pin_val_weight'])
 
                 if score > max_score:
                     best_pins = tf.ensure_shape(tf.gather_nd(pins, tf.expand_dims(indices, -1)), (3,2))
@@ -218,14 +221,13 @@ class PinDetectionModel(tf.Module):
 
             return best_pins
 
-    @staticmethod
-    def _assert_correct_generic_one(pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_generic_one(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         max_score = tf.constant(tf.float32.min)
         best_pin = tf.zeros((1, 2), tf.float32)
 
         for i in tf.range(tf.shape(pins)[0]):
             error = tf.abs(tf.sin(tf.math.acos(tf.tensordot(tf.constant([1.0, 0.0]), norm_directions[i], 1))))
-            score = pin_vals[i] - error
+            score = pin_vals[i] * self._hyperparameters['pin_val_weight'] - error * (1.0 - self._hyperparameters['pin_val_weight'])
 
             if score > max_score:
                 best_pin = tf.ensure_shape(tf.expand_dims(pins[i], 0), (1,2))
@@ -233,8 +235,7 @@ class PinDetectionModel(tf.Module):
 
         return best_pin
 
-    @staticmethod
-    def _assert_correct_pin_count(pins: tf.Tensor, pin_vals: tf.Tensor, class_id: tf.Tensor):
+    def _assert_correct_pin_count(self, pins: tf.Tensor, pin_vals: tf.Tensor, class_id: tf.Tensor):
         num_pins = tf.shape(pins)[0]
 
         if num_pins == 0:
@@ -247,16 +248,16 @@ class PinDetectionModel(tf.Module):
             return pins
             
         if class_id == PinDetectionModel.S3:
-            return PinDetectionModel._assert_correct_s3(pins, pin_vals, num_pins, norm_directions, directions)
+            return self._assert_correct_s3(pins, pin_vals, num_pins, norm_directions, directions)
         elif class_id == PinDetectionModel.MIC or class_id == PinDetectionModel.SPK:
-            return PinDetectionModel._assert_correct_mic_spk(pins, pin_vals, num_pins, norm_directions, directions)
+            return self._assert_correct_mic_spk(pins, pin_vals, num_pins, norm_directions, directions)
         elif class_id == PinDetectionModel.POT:
-            return PinDetectionModel._assert_correct_pot(pins, pin_vals, num_pins, norm_directions, directions)
+            return self._assert_correct_pot(pins, pin_vals, num_pins, norm_directions, directions)
         elif PinDetectionModel.ID_TO_NUM_PINS[class_id] == 2:
-            return PinDetectionModel._assert_correct_generic_two(pins, pin_vals, num_pins, norm_directions, directions)
+            return self._assert_correct_generic_two(pins, pin_vals, num_pins, norm_directions, directions)
         elif PinDetectionModel.ID_TO_NUM_PINS[class_id] == 3:
-            return PinDetectionModel._assert_correct_generic_three(pins, pin_vals, num_pins, norm_directions, directions)
+            return self._assert_correct_generic_three(pins, pin_vals, num_pins, norm_directions, directions)
         elif PinDetectionModel.ID_TO_NUM_PINS[class_id] == 1:
-            return PinDetectionModel._assert_correct_generic_one(pins, pin_vals, num_pins, norm_directions, directions)
+            return self._assert_correct_generic_one(pins, pin_vals, num_pins, norm_directions, directions)
         else:
             return pins
