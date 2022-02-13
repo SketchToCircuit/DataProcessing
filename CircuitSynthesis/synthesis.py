@@ -1,11 +1,13 @@
-from typing import Dict, Tuple, List, ClassVar
-from dataclasses import dataclass
-
-import Tools.PinDetection.pindetection as pd
-from Tools.squigglylines import * 
-
 import random
+from dataclasses import dataclass
+from typing import ClassVar, Dict, List, Tuple
+
 import numpy as np
+import os
+
+import dummy_sketch_generation as dsg
+import Tools.PinDetection.pindetection as pd
+from Tools.squigglylines import *
 
 PART_COUNT_MU = 20 #mü is the amount of average parts
 PART_COUNT_SIGMA = 5 #sigma is standart deviation
@@ -19,8 +21,10 @@ MIN_LEN_LINE_CROSSING = 150
 
 NUM_FILES = 20
 CIRCUITS_PER_FILE = 1000
-VALIDATION_NUM = 150
+VALIDATION_NUM = 120
 VAL_SRC_SPLIT = 0.1
+
+DUMMY_SKETCH_GENERATION_PART = 0.3
 
 DEBUG = False
 
@@ -235,11 +239,13 @@ def _create_circuit(components: Dict[str, pd.UnloadedComponent], validation=Fals
     return _finalize_components(compList, ranrows * GRIDSIZE, rancols * GRIDSIZE)
 
 if __name__ == '__main__':
-    from Tools.export_tfrecords import export_circuits, export_label_map
+    from Tools.export_tfrecords import export_circuits, export_label_map, _parse_fine_to_coarse
 
     export_label_map('./DataProcessing/ObjectDetection/data/label_map.pbtxt', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
     components = pd.import_components('./DataProcessing/pindetection_data/data.json')
+
+    label_convert = _parse_fine_to_coarse('./DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
     if DEBUG:
         for i in range(5):
@@ -249,22 +255,35 @@ if __name__ == '__main__':
             cv2.destroyAllWindows()
         exit()
 
-    val_cirucits: List[RoutedCircuit] = [None] * VALIDATION_NUM
+    num_dummy_circuit_data = len(os.listdir('./DataProcessing/CircuitSynthesis/DummySketchData/')) // 2
+
+    val_cirucits: List[RoutedCircuit] = []
+    val_dummy_circuits = []
+
     for i in range(VALIDATION_NUM):
-        val_cirucits[i] = _create_circuit(components, validation=True)
+        if random.random() < DUMMY_SKETCH_GENERATION_PART:
+            x = random.randint(0, num_dummy_circuit_data - 1)
+            val_dummy_circuits.extend(dsg.get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/{x}_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/{x}_mask.jpg', components, label_convert))
+        else:
+            val_cirucits.append(_create_circuit(components, validation=True))
 
         if i % 100 == 0:
             print(f'val:{i}')
     
-    export_circuits(val_cirucits, f'./DataProcessing/ObjectDetection/data/val.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
+    export_circuits(val_cirucits, f'./DataProcessing/ObjectDetection/data/val.tfrecord', val_dummy_circuits, './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
     for f in range(NUM_FILES):
-        cirucits: List[RoutedCircuit] = [None] * CIRCUITS_PER_FILE
+        cirucits: List[RoutedCircuit] = []
+        dummy_circuits = []
         
         for i in range(CIRCUITS_PER_FILE):
-            cirucits[i] = _create_circuit(components)
+            if random.random() < DUMMY_SKETCH_GENERATION_PART:
+                x = random.randint(0, num_dummy_circuit_data - 1)
+                dummy_circuits.extend(dsg.get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/{x}_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/{x}_mask.jpg', components, label_convert))
+            else:
+                cirucits.append(_create_circuit(components))
 
             if i % 200 == 0:
                 print(f'{f}:{i}')
 
-        export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
+        export_circuits(cirucits, f'./DataProcessing/ObjectDetection/data/train-{f}.tfrecord', dummy_circuits, './DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
