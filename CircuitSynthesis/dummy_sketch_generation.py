@@ -87,14 +87,14 @@ def _overlay_component(cmp: pd.Component, img, offset):
     if random.random() < 0.3:
         _overlay_patch(cmp.label_img, img, (offset + cmp.label_offset).astype(int))
 
-def _place_single_pinned(raw_components, pin, center, img):
+def _place_single_pinned(raw_components, pin, center, line_thickness, img):
     GNDS = ['GND', 'GND_F', 'GND_C']
     type = 'PIN' if random.random() > 0.5 else random.choice(GNDS)
 
     cmp: pd.Component = random.choice(raw_components[type]).load()
     cmp.component_img = cv2.erode(cmp.component_img, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
     cmp.label_img = cv2.erode(cmp.label_img, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
-    cmp.scale(random.uniform(2.0, 3.0) / _getMedianLineThickness(cmp.component_img))
+    cmp.scale(line_thickness / _getMedianLineThickness(cmp.component_img))
 
     orientation_vec = pin - center
 
@@ -271,7 +271,7 @@ def _place_triple_pinned(raw_components, pins, special_pin, special_pin_type, im
 
     return bbox, type
 
-def place_components(dummy_objects, raw_components, img):
+def place_components(dummy_objects, raw_components, line_thickness, img):
     bboxes = []
     labels = []
 
@@ -279,7 +279,7 @@ def place_components(dummy_objects, raw_components, img):
         center, pins, special_pins, special_pin_types = obj
 
         if len(pins) == 1:
-            bbox, label = _place_single_pinned(raw_components, pins[0], center, img)
+            bbox, label = _place_single_pinned(raw_components, pins[0], center, line_thickness, img)
         elif len(pins) == 2 and len(special_pins) == 0:
             bbox, label = _place_double_pinned(raw_components, pins, center, img)
         elif len(pins) == 2 and len(special_pins) == 1:
@@ -300,12 +300,12 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
     tf_label_and_data = []
 
     for i in range(4):
-        sf = random.uniform(1.0, 4.0) / line_thickness
+        sf = random.uniform(1.0, 3.0) / line_thickness
         img = dummy_img.copy()
 
         dummy_objects = _detect_dummy_objects(mask_img)
 
-        bboxes, labels = place_components(dummy_objects, raw_components, img)
+        bboxes, labels = place_components(dummy_objects, raw_components, line_thickness,img)
 
         for new_bboxs, indices, img in split_circuit(bboxes, img):
             encoded_image = tf.io.encode_jpeg(cv2.cvtColor(cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA), cv2.COLOR_GRAY2BGR)).numpy()
