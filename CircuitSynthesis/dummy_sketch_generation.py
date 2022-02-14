@@ -267,7 +267,7 @@ def _place_triple_pinned(raw_components, pins, special_pin, special_pin_type, im
     bbox = cv2.transform(bbox, affine_transform)[0].astype(int)
     bbox = (np.amin(bbox[:, 0]), np.amin(bbox[:, 1]), np.amax(bbox[:, 0]), np.amax(bbox[:, 1]))
 
-    img[:] = (img * (cv2.warpAffine(cmp.component_img, affine_transform, np.array(img.shape)[:2], flags=cv2.BORDER_CONSTANT | cv2.INTER_AREA, borderValue=255) / 255.0)).astype(np.uint8)
+    img[:] = (img * (cv2.warpAffine(cmp.component_img, affine_transform, np.array(img.shape)[1::-1], flags=cv2.BORDER_CONSTANT | cv2.INTER_AREA, borderValue=255) / 255.0)).astype(np.uint8)
 
     return bbox, type
 
@@ -291,24 +291,50 @@ def place_components(dummy_objects, raw_components, line_thickness, img):
         labels.append(label)
     return (bboxes, labels)
 
+def translate_img(img, dx, dy):
+    if img.ndim == 2:
+        new_img = np.full((img.shape[0] + abs(dy), img.shape[1] + abs(dx)), 255, np.uint8)
+    else:
+        new_img = np.full((img.shape[0] + abs(dy), img.shape[1] + abs(dx), img.shape[2]), 255, np.uint8)
+    new_img[max(0, dy):max(0, dy) + img.shape[0], max(0, dx):max(0, dx) + img.shape[1]] = img
+
+    return new_img
+
 def get_examples(dummy_path, mask_path, raw_components, label_convert):
     dummy_img = cv2.imread(dummy_path, cv2.IMREAD_GRAYSCALE)
     mask_img = cv2.imread(mask_path, cv2.IMREAD_COLOR)
+
+    if dummy_img.shape[:2] != mask_img.shape[:2]:
+        return []
+
+    shift_y = random.randint(-int(dummy_img.shape[0] * 0.5), int(dummy_img.shape[0] * 0.5))
+    shift_x = random.randint(-int(dummy_img.shape[1] * 0.5), int(dummy_img.shape[1] * 0.5))
+    dummy_img = translate_img(dummy_img, shift_x, shift_y)
+    mask_img = translate_img(mask_img, shift_x, shift_y)
 
     line_thickness = _getMedianLineThickness(dummy_img)
 
     tf_label_and_data = []
 
     for i in range(4):
-        sf = random.uniform(1.0, 3.0) / line_thickness
+        sf = random.uniform(1.5, 3.0) / line_thickness
         img = dummy_img.copy()
 
         dummy_objects = _detect_dummy_objects(mask_img)
 
         bboxes, labels = place_components(dummy_objects, raw_components, line_thickness,img)
 
+        img = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA)
+        bboxes = [tuple(a * sf for a in box) for box in bboxes]
+
+        # cv2.imshow('img', img)
+        # cv2.waitKey(0)
+
         for new_bboxs, indices, img in split_circuit(bboxes, img):
-            encoded_image = tf.io.encode_jpeg(cv2.cvtColor(cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA), cv2.COLOR_GRAY2BGR)).numpy()
+            if len(new_bboxs) == 0:
+                continue
+
+            encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
             img_h, img_w = img.shape
 
             xmins = []
@@ -318,9 +344,9 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
             types = []
             ids = []
 
-            for bbox, i in zip(new_bboxs, indices):
-                types.append(label_convert[labels[i]][0].encode('utf8'))
-                ids.append(label_convert[labels[i]][1])
+            for bbox, idx in zip(new_bboxs, indices):
+                types.append(label_convert[labels[idx]][0].encode('utf8'))
+                ids.append(label_convert[labels[idx]][1])
                 xmins.append(bbox[0])
                 ymins.append(bbox[1])
                 xmaxs.append(bbox[2])
@@ -340,7 +366,7 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
                 'image/object/class/text': bytes_list_feature(types),
                 'image/object/class/label': int64_list_feature(ids),
             })))
-
+        
         if i < 3:
             dummy_img = cv2.rotate(dummy_img, cv2.ROTATE_90_CLOCKWISE)
             mask_img = cv2.rotate(mask_img, cv2.ROTATE_90_CLOCKWISE)
@@ -352,9 +378,7 @@ def main():
     raw_components = pd.import_components('./DataProcessing/pindetection_data/data.json')
     label_convert = _parse_fine_to_coarse('./DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
-    # with tf.io.TFRecordWriter('./Data/first_new_synth.tfrecord') as writer:
-    #     for example in get_examples('./DataProcessing/CircuitSynthesis/DummySketchData/0_dummy.jpg', './DataProcessing/CircuitSynthesis/DummySketchData/0_mask.jpg', raw_components, label_convert):
-    #         writer.write(example.SerializeToString())
+    get_examples('./DataProcessing/CircuitSynthesis/DummySketchData/6_dummy.jpg', './DataProcessing/CircuitSynthesis/DummySketchData/6_mask.jpg', raw_components, label_convert)
 
 if __name__ == '__main__':
     main()

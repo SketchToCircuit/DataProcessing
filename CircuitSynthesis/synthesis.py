@@ -24,7 +24,7 @@ CIRCUITS_PER_FILE = 1000
 VALIDATION_NUM = 120
 VAL_SRC_SPLIT = 0.1
 
-DUMMY_SKETCH_GENERATION_PART = 0.3
+DUMMY_SKETCH_GENERATION_PART = 0.4
 
 DEBUG = False
 
@@ -255,7 +255,7 @@ if __name__ == '__main__':
             cv2.destroyAllWindows()
         exit()
 
-    num_dummy_circuit_data = len(os.listdir('./DataProcessing/CircuitSynthesis/DummySketchData/')) // 2
+    num_dummy_circuit_data = (len(os.listdir('./DataProcessing/CircuitSynthesis/DummySketchData/')) - 1) // 2
 
     val_cirucits: List[RoutedCircuit] = []
     val_dummy_circuits = []
