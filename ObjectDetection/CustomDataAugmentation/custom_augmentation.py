@@ -99,6 +99,16 @@ def resize_to_square(img, boxes, size=640):
     img = 255 - tf.image.resize_with_pad(255 - img, size, size, method=tf.image.ResizeMethod.AREA)
     return img, boxes
 
+def augment_boxes(boxes):
+    centers = (boxes[:, :2] + boxes[:, 2:]) / 2.0
+    sizes = boxes[:, 2:] - boxes[:, :2]
+
+    centers = centers + tf.random.uniform(tf.shape(centers), -0.02, 0.02)
+    sizes = sizes * tf.random.uniform(tf.shape(sizes), 0.8, 1.1)
+
+    boxes = tf.concat([centers - sizes / 2.0, centers + sizes / 2.0], 1)
+    return boxes
+
 @tf.function
 def augment(image, boxes):
     '''
@@ -140,6 +150,8 @@ def augment(image, boxes):
         # 50% add uniform noise
         else:
             image = noise_uniform(image, strength=tf.random.uniform([], minval=10, maxval=30))
+
+    boxes = augment_boxes(boxes)
 
     # set all color channels to the same value
     image = tf.repeat(tf.reduce_mean(image, axis=-1, keepdims=True), 3, axis=-1)
