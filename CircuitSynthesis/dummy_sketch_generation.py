@@ -16,8 +16,13 @@ def _getMedianLineThickness(img):
 
 def _detect_dummy_objects(mask_img):
     obj_mask = np.where(np.any(mask_img < 127, -1), [255], [0]).astype(np.uint8)
-    main_pin_mask = np.where(np.logical_and(obj_mask > 127, mask_img[..., 0] > 150), [255], [0]).astype(np.uint8)
-    special_pin_mask = np.where(np.logical_and(mask_img[..., 1] > 20, mask_img[..., 2] < 100), [255], [0]).astype(np.uint8)
+    main_pin_mask = np.where(np.logical_and(mask_img[..., 2] < 50, mask_img[..., 0] > 150), [255], [0]).astype(np.uint8)
+    special_pin_mask = np.where(np.logical_and(np.logical_and(mask_img[..., 1] > 20, mask_img[..., 2] < 50), mask_img[..., 0] < 50), [255], [0]).astype(np.uint8)
+
+    # cv2.imshow('o', obj_mask)
+    # cv2.imshow('m', main_pin_mask)
+    # cv2.imshow('s', special_pin_mask)
+    # cv2.waitKey()
 
     main_pin_contours, _ = cv2.findContours(main_pin_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
     special_pin_contours, _ = cv2.findContours(special_pin_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
@@ -30,6 +35,7 @@ def _detect_dummy_objects(mask_img):
             y = m['m01'] / m['m00']
             main_pins.append(np.array([x, y]))
         except Exception:
+            print('empty contour')
             pass
     
     special_pins = []
@@ -40,6 +46,7 @@ def _detect_dummy_objects(mask_img):
             y = m['m01'] / m['m00']
             special_pins.append(np.array([x, y]))
         except Exception:
+            print('empty contour')
             pass
     
     obj_contours, _ = cv2.findContours(obj_mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
@@ -47,9 +54,13 @@ def _detect_dummy_objects(mask_img):
     objects = []
     
     for obj_cnt in obj_contours:
-        m = cv2.moments(obj_cnt)
-        x = m['m10'] / m['m00']
-        y = m['m01'] / m['m00']
+        try:
+            m = cv2.moments(obj_cnt)
+            x = m['m10'] / m['m00']
+            y = m['m01'] / m['m00']
+        except Exception:
+            print('empty contour')
+            pass
 
         current_pins = []
         current_special_pins = []
@@ -378,7 +389,10 @@ def main():
     raw_components = pd.import_components('./DataProcessing/pindetection_data/data.json')
     label_convert = _parse_fine_to_coarse('./DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
-    get_examples('./DataProcessing/CircuitSynthesis/DummySketchData/6_dummy.jpg', './DataProcessing/CircuitSynthesis/DummySketchData/6_mask.jpg', raw_components, label_convert)
+    # for i in range(10):
+    #     print(i)
+    #     get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/{i}_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/{i}_mask.jpg', raw_components, label_convert)
+    # get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/4_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/4_mask.jpg', raw_components, label_convert)
 
 if __name__ == '__main__':
     main()
