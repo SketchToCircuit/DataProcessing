@@ -12,7 +12,9 @@ def _getMedianLineThickness(img):
     _, bw = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV)
     dist = cv2.distanceTransform(bw, cv2.DIST_L2, 3)
     maxima = scipy.signal.argrelextrema(dist, np.greater, order=2)
-    return np.median(dist[maxima]) * 2.0
+    if maxima[0].size == 0:
+        return 3.0
+    return max(np.median(dist[maxima]) * 2.0, 1.0)
 
 def _detect_dummy_objects(mask_img):
     obj_mask = np.where(np.any(mask_img < 127, -1), [255], [0]).astype(np.uint8)
@@ -95,7 +97,7 @@ def _overlay_patch(patch, img, offset):
 
 def _overlay_component(cmp: pd.Component, img, offset):
     _overlay_patch(cmp.component_img, img, offset)
-    if random.random() < 0.3:
+    if random.random() < 0.2:
         _overlay_patch(cmp.label_img, img, (offset + cmp.label_offset).astype(int))
 
 def _place_single_pinned(raw_components, pin, center, line_thickness, img):
@@ -278,6 +280,11 @@ def _place_triple_pinned(raw_components, pins, special_pin, special_pin_type, im
     bbox = cv2.transform(bbox, affine_transform)[0].astype(int)
     bbox = (np.amin(bbox[:, 0]), np.amin(bbox[:, 1]), np.amax(bbox[:, 0]), np.amax(bbox[:, 1]))
 
+    max_size = max(np.amax(dst_pos[..., 0]) - np.amin(dst_pos[..., 0]), np.amax(dst_pos[..., 1]) - np.amin(dst_pos[..., 1])) * 3.0
+
+    if max(bbox[2] - bbox[0], bbox[3] - bbox[1]) > max_size:
+        return None, None
+
     img[:] = (img * (cv2.warpAffine(cmp.component_img, affine_transform, np.array(img.shape)[1::-1], flags=cv2.BORDER_CONSTANT | cv2.INTER_AREA, borderValue=255) / 255.0)).astype(np.uint8)
 
     return bbox, type
@@ -295,6 +302,8 @@ def place_components(dummy_objects, raw_components, line_thickness, img):
             bbox, label = _place_double_pinned(raw_components, pins, center, img)
         elif len(pins) == 2 and len(special_pins) == 1:
             bbox, label = _place_triple_pinned(raw_components, pins, special_pins[0], special_pin_types[0], img)
+            if bbox is None:
+                continue
         else:
             continue
 
