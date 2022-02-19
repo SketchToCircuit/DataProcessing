@@ -18,5 +18,10 @@ python exporter_main_v2.py \
                     resize_method: AREA \
                   } \
                 } \
+                box_predictor { \
+                  weight_shared_convolutional_box_predictor { \
+                    use_dropout: false \
+                  } \
+                } \
               } \
             }"
