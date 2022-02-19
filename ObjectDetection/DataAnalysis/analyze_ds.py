@@ -1,5 +1,5 @@
 import os
-from typing import Set
+from typing import List
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
@@ -37,16 +37,22 @@ def analyze(path: str):
 
     dataset = dataset.map(lambda example: tf.io.parse_single_example(example, ft_desc)).map(extract_img_boxes)
 
-    aspect_ratios: Set[float] = set()
+    aspect_ratios: List[float] = []
+    heights: List[int] = []
+    widths: List[int] = []
+    num_boxes = []
 
-    for img, boxes in dataset.take(5):
+    for img, boxes in dataset:
         img = img.numpy().astype(np.uint8)
+        sf = 640.0 / np.amax(img.shape)
+
+        num_boxes.append(boxes.shape[0])
 
         for box in boxes.numpy():
-            xmin = box[1] * img.shape[1]
-            ymin = box[0] * img.shape[0]
-            xmax = box[3] * img.shape[1]
-            ymax = box[2] * img.shape[0]
+            xmin = box[1] * img.shape[1] * sf
+            ymin = box[0] * img.shape[0] * sf
+            xmax = box[3] * img.shape[1] * sf
+            ymax = box[2] * img.shape[0] * sf
         
             xmin = int(xmin)
             ymin = int(ymin)
@@ -54,21 +60,55 @@ def analyze(path: str):
             ymax = int(ymax)
 
             ratio = (xmax - xmin) / (ymax - ymin)
+            height = ymax - ymin
+            width = xmax - xmin
 
             if ratio < 1.0:
                 ratio = 1.0 / ratio
 
-            aspect_ratios.add(ratio)
-    
-    return aspect_ratios
+            aspect_ratios.append(ratio)
+            heights.append(height)
+            widths.append(width)
+
+    return aspect_ratios, heights, widths, num_boxes
 
 if __name__ == '__main__':
-    aspect_ratios: Set[float] = set()
+    aspect_ratios = []
+    heights = []
+    widths = []
+    num_boxes = []
 
     for file in os.listdir('./ObjectDetection/data'):
         file = os.path.join('./ObjectDetection/data', file)
         if os.path.isfile(file) and os.path.splitext(file)[1] == '.tfrecord':
-            aspect_ratios.update(analyze(file))
+            ratios, h, w, n_b = analyze(file)
+            aspect_ratios.extend(ratios)
+            heights.extend(h)
+            widths.extend(w)
+            num_boxes.extend(n_b)
 
-    plt.hist(aspect_ratios, bins=math.ceil(math.sqrt(len(aspect_ratios))))
+    aspect_ratios = np.array(aspect_ratios)
+    aspect_ratios = aspect_ratios[aspect_ratios < np.percentile(aspect_ratios, 95)]
+
+    heights = np.array(heights)
+    heights = heights[heights < np.percentile(heights, 95)]
+
+    widths = np.array(widths)
+    widths = widths[widths < np.percentile(widths, 95)]
+
+    fig, axs = plt.subplots(4)
+    fig.tight_layout(pad=2.0)
+
+    axs[0].set_title('aspect ratios')
+    axs[0].hist(aspect_ratios, bins='auto')
+
+    axs[1].set_title('heights')
+    axs[1].hist(heights, bins='auto')
+
+    axs[2].set_title('widths')
+    axs[2].hist(widths, bins='auto')
+
+    axs[3].set_title('num boxes')
+    axs[3].hist(num_boxes, bins='auto')
+
     plt.savefig('./ObjectDetection/DataAnalysis/plot.png')
