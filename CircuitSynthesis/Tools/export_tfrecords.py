@@ -36,13 +36,13 @@ def export_label_map(dest_path, src_path: str = 'ObjectDetection/fine_to_coarse_
 
 def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str, int]]):
     # 70% with label
-    img = draw_routed_circuit(circ, labels=(random.random() < 0.7))
+    routed_img = draw_routed_circuit(circ, labels=(random.random() < 0.7))
 
     bboxs = [(cmp.pos[0], cmp.pos[1], cmp.cmp.component_img.shape[1] + cmp.pos[0], cmp.cmp.component_img.shape[0]+ cmp.pos[1]) for cmp in circ.components]
     
     tf_label_and_data = []
 
-    for new_bboxs, indices, img in split_circuit(bboxs, img):
+    for new_bboxs, indices, img in split_circuit(bboxs, routed_img):
         encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
         img_h, img_w = img.shape
 
@@ -56,10 +56,10 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
         for bbox, i in zip(new_bboxs, indices):
             types.append(label_convert[circ.components[i].type_id][0].encode('utf8'))
             ids.append(label_convert[circ.components[i].type_id][1])
-            xmins.append(bbox[0])
-            ymins.append(bbox[1])
-            xmaxs.append(bbox[2])
-            ymaxs.append(bbox[3])
+            xmins.append(min(max(bbox[0], 0.0), 1.0))
+            ymins.append(min(max(bbox[1], 0.0), 1.0))
+            xmaxs.append(min(max(bbox[2], 0.0), 1.0))
+            ymaxs.append(min(max(bbox[3], 0.0), 1.0))
 
         tf_label_and_data.append(tf.train.Example(features=tf.train.Features(feature={
             'image/height': int64_feature(img_h),

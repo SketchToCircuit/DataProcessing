@@ -5,6 +5,8 @@ from typing import ClassVar, Dict, List, Tuple
 import numpy as np
 import os
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 import dummy_sketch_generation as dsg
 import Tools.PinDetection.pindetection as pd
 from Tools.squigglylines import *
@@ -24,7 +26,7 @@ CIRCUITS_PER_FILE = 1000
 VALIDATION_NUM = 120
 VAL_SRC_SPLIT = 0.1
 
-DUMMY_SKETCH_GENERATION_PART = 0.4
+DUMMY_SKETCH_GENERATION_PART = 0.25
 
 DEBUG = False
 

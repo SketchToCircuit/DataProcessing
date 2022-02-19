@@ -17,7 +17,7 @@ def threshold(img):
     return tf.where(img < 200, 0.0, 255.0)
 
 def contrast_boost(img):
-    return tf.clip_by_value(tf.image.adjust_contrast(img, tf.random.uniform(shape=[], minval=1.5, maxval=3.0)), 0.0, 255.0)
+    return tf.clip_by_value(tf.image.adjust_contrast(img, tf.random.uniform(shape=[], minval=1.1, maxval=2.0)), 0.0, 255.0)
 
 def dilate(img, size):
     # https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation
@@ -99,16 +99,6 @@ def resize_to_square(img, boxes, size=640):
     img = 255 - tf.image.resize_with_pad(255 - img, size, size, method=tf.image.ResizeMethod.AREA)
     return img, boxes
 
-def augment_boxes(boxes):
-    centers = (boxes[:, :2] + boxes[:, 2:]) / 2.0
-    sizes = boxes[:, 2:] - boxes[:, :2]
-
-    centers = centers + tf.random.uniform(tf.shape(centers), -0.02, 0.02)
-    sizes = sizes * tf.random.uniform(tf.shape(sizes), 0.8, 1.1)
-
-    boxes = tf.concat([centers - sizes / 2.0, centers + sizes / 2.0], 1)
-    return boxes
-
 @tf.function
 def augment(image, boxes):
     '''
@@ -117,27 +107,27 @@ def augment(image, boxes):
     '''
     image = tf.ensure_shape(image, [None, None, 3])
 
-    # 70% contrast boosting or 30% threshold
-    if tf.random.uniform([]) < 0.7:
+    # 50% contrast boosting or 50% threshold
+    if tf.random.uniform([]) < 0.5:
         image = contrast_boost(image)
     else:
         image = threshold(image)
 
-    # 60% dilation or erosion
-    if tf.random.uniform([]) < 0.6:
+    # 50% dilation or erosion
+    if tf.random.uniform([]) < 0.5:
         # 90% erosion, 10% dilation
         if tf.random.uniform([]) < 0.9:
-            image = erode(image, tf.random.uniform(shape=[], minval=1, maxval=6, dtype=tf.int64)) # between 1 and 5 (inclusive) for erosion (thicker)
+            image = erode(image, tf.random.uniform(shape=[], minval=1, maxval=4, dtype=tf.int64)) # between 1 and 3 (inclusive) for erosion (thicker)
         else:
             image = dilate(image, 2) # kernel size for dilation (smaller) is always 2
 
-    # 30% image warping
-    if tf.random.uniform([]) < 0.3:
-        image = warp_random(image, tf.random.uniform([], minval=0.2, maxval=1.3)) # random strength
+    # 20% image warping
+    if tf.random.uniform([]) < 0.2:
+        image = warp_random(image, tf.random.uniform([], minval=0.05, maxval=0.5)) # random strength
 
     # 50% resize Picture uneven
     if tf.random.uniform([]) < 0.5:
-        image = uneven_resize(image, span=0.8)
+        image = uneven_resize(image, span=0.6)
 
     # resize and pad to square
     image, boxes = resize_to_square(image, boxes, 640)
@@ -150,8 +140,6 @@ def augment(image, boxes):
         # 50% add uniform noise
         else:
             image = noise_uniform(image, strength=tf.random.uniform([], minval=10, maxval=30))
-
-    boxes = augment_boxes(boxes)
 
     # set all color channels to the same value
     image = tf.repeat(tf.reduce_mean(image, axis=-1, keepdims=True), 3, axis=-1)

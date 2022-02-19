@@ -350,12 +350,12 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
         # cv2.imshow('img', img)
         # cv2.waitKey(0)
 
-        for new_bboxs, indices, img in split_circuit(bboxes, img):
+        for new_bboxs, indices, split_img in split_circuit(bboxes, img):
             if len(new_bboxs) == 0:
                 continue
 
-            encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
-            img_h, img_w = img.shape
+            encoded_image = tf.io.encode_jpeg(cv2.cvtColor(split_img, cv2.COLOR_GRAY2BGR)).numpy()
+            img_h, img_w = split_img.shape
 
             xmins = []
             ymins = []
@@ -367,10 +367,10 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
             for bbox, idx in zip(new_bboxs, indices):
                 types.append(label_convert[labels[idx]][0].encode('utf8'))
                 ids.append(label_convert[labels[idx]][1])
-                xmins.append(bbox[0])
-                ymins.append(bbox[1])
-                xmaxs.append(bbox[2])
-                ymaxs.append(bbox[3])
+                xmins.append(min(max(bbox[0], 0.0), 1.0))
+                ymins.append(min(max(bbox[1], 0.0), 1.0))
+                xmaxs.append(min(max(bbox[2], 0.0), 1.0))
+                ymaxs.append(min(max(bbox[3], 0.0), 1.0))
 
             tf_label_and_data.append(tf.train.Example(features=tf.train.Features(feature={
                 'image/height': int64_feature(img_h),
