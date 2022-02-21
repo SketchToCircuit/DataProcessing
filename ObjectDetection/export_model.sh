@@ -2,7 +2,7 @@
 eval "$(conda shell.bash hook)"
 conda activate neural
 export CUDA_VISIBLE_DEVICES=-1
-export MODEL_VERSION=v14
+export MODEL_VERSION=v17
 python exporter_main_v2.py \
 --pipeline_config_path=./models/ssd_resnet101_640/${MODEL_VERSION}/pipeline.config \
 --trained_checkpoint_dir=./models/ssd_resnet101_640/${MODEL_VERSION}/best_ckps \
@@ -16,11 +16,6 @@ python exporter_main_v2.py \
                     height: 640 \
                     width: 640 \
                     resize_method: AREA \
-                  } \
-                } \
-                box_predictor { \
-                  weight_shared_convolutional_box_predictor { \
-                    use_dropout: false \
                   } \
                 } \
               } \

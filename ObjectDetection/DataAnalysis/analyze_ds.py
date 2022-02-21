@@ -32,8 +32,9 @@ def analyze(path: str):
     def extract_img_boxes(example):
         boxes = tf.stack([example['image/object/bbox/ymin'].values, example['image/object/bbox/xmin'].values, example['image/object/bbox/ymax'].values, example['image/object/bbox/xmax'].values], axis=1)
         img = tf.cast(tf.io.decode_jpeg(example['image/encoded']), dtype=tf.float32)
+        texts = example['image/object/class/text'].values
 
-        return img, boxes
+        return img, boxes, texts
 
     dataset = dataset.map(lambda example: tf.io.parse_single_example(example, ft_desc)).map(extract_img_boxes)
 
@@ -42,13 +43,13 @@ def analyze(path: str):
     widths: List[int] = []
     num_boxes = []
 
-    for img, boxes in dataset:
+    for img, boxes, texts in dataset:
         img = img.numpy().astype(np.uint8)
         sf = 640.0 / np.amax(img.shape)
 
         num_boxes.append(boxes.shape[0])
 
-        for box in boxes.numpy():
+        for box, text in zip(boxes.numpy(), texts.numpy()):
             xmin = box[1] * img.shape[1] * sf
             ymin = box[0] * img.shape[0] * sf
             xmax = box[3] * img.shape[1] * sf
