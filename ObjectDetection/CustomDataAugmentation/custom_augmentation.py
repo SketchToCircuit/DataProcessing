@@ -143,6 +143,7 @@ def augment(image, boxes):
 
     # set all color channels to the same value
     image = tf.repeat(tf.reduce_mean(image, axis=-1, keepdims=True), 3, axis=-1)
+    image = tf.ensure_shape(image, [640, 640, 3])
     return image, boxes
 
 # for eagerly testing the augmentation on *.tfrecord

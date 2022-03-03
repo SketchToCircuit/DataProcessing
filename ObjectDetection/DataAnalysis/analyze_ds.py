@@ -42,6 +42,7 @@ def analyze(path: str):
     heights: List[int] = []
     widths: List[int] = []
     num_boxes = []
+    classes = {}
 
     for img, boxes, texts in dataset:
         img = img.numpy().astype(np.uint8)
@@ -50,6 +51,9 @@ def analyze(path: str):
         num_boxes.append(boxes.shape[0])
 
         for box, text in zip(boxes.numpy(), texts.numpy()):
+            text = text.decode()
+            classes[text] = classes.get(text, 0) + 1
+
             xmin = box[1] * img.shape[1] * sf
             ymin = box[0] * img.shape[0] * sf
             xmax = box[3] * img.shape[1] * sf
@@ -71,22 +75,26 @@ def analyze(path: str):
             heights.append(height)
             widths.append(width)
 
-    return aspect_ratios, heights, widths, num_boxes
+    return aspect_ratios, heights, widths, num_boxes, classes
 
 if __name__ == '__main__':
     aspect_ratios = []
     heights = []
     widths = []
     num_boxes = []
+    classes = {}
 
     for file in os.listdir('./ObjectDetection/data'):
         file = os.path.join('./ObjectDetection/data', file)
         if os.path.isfile(file) and os.path.splitext(file)[1] == '.tfrecord':
-            ratios, h, w, n_b = analyze(file)
+            ratios, h, w, n_b, clses = analyze(file)
             aspect_ratios.extend(ratios)
             heights.extend(h)
             widths.extend(w)
             num_boxes.extend(n_b)
+
+            for cls, num in clses.items():
+                classes[cls] = classes.get(cls, 0) + num
 
     aspect_ratios = np.array(aspect_ratios)
     aspect_ratios = aspect_ratios[aspect_ratios < np.percentile(aspect_ratios, 95)]
@@ -97,7 +105,7 @@ if __name__ == '__main__':
     widths = np.array(widths)
     widths = widths[widths < np.percentile(widths, 95)]
 
-    fig, axs = plt.subplots(4)
+    fig, axs = plt.subplots(5, figsize=(30, 20))
     fig.tight_layout(pad=2.0)
 
     axs[0].set_title('aspect ratios')
@@ -110,6 +118,10 @@ if __name__ == '__main__':
     axs[2].hist(widths, bins='auto')
 
     axs[3].set_title('num boxes')
-    axs[3].hist(num_boxes, bins='auto')
+    axs[3].hist(num_boxes, bins=np.amax(num_boxes) // 2)
+
+    axs[4].set_title('classes')
+    axs[4].bar(np.arange(len(classes)) + 1, np.array(list(classes.values())))
+    axs[4].set_xticks(np.arange(len(classes)) + 1, list(classes.keys()))
 
     plt.savefig('./ObjectDetection/DataAnalysis/plot.png')

@@ -37,8 +37,6 @@ tf.config.optimizer.set_experimental_options({
     'disable_meta_optimizer': False
 })
 
-img = cv2.imread('./CompleteModel/test4.jpeg', cv2.IMREAD_COLOR)
-
 def normalize_avg_line_thickness(img, goal_thickness=4):
     _, bw = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), 127, 255, cv2.THRESH_BINARY_INV)
     dist = cv2.distanceTransform(bw, cv2.DIST_L2, 3)
@@ -47,8 +45,6 @@ def normalize_avg_line_thickness(img, goal_thickness=4):
     sf = goal_thickness / med_thick
     resized = cv2.resize(img, None, fx=sf, fy=sf, interpolation=cv2.INTER_AREA)
     return cv2.threshold(cv2.cvtColor(resized, cv2.COLOR_RGB2GRAY), 0, 255, cv2.THRESH_OTSU)[1]
-
-img = normalize_avg_line_thickness(img, 4)
 
 from combined_model import CombinedModel
 
@@ -63,19 +59,21 @@ hyperparameters = {
     'box_certainty_combined_scores': 0.2
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v18/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
 
-classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()
+for i in range(1, 5):
+    img = cv2.imread(f'./CompleteModel/test{i}.jpeg', cv2.IMREAD_COLOR)
+    img = normalize_avg_line_thickness(img, 3)
+    classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()
+    colored_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-colored_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    for box in boxes.numpy():
+        colored_img = cv2.rectangle(colored_img, (box[1], box[0]), (box[3], box[2]), (0, 0, 255), thickness=2)
 
-for box in boxes.numpy():
-    colored_img = cv2.rectangle(colored_img, (box[1], box[0]), (box[3], box[2]), (0, 0, 255), thickness=2)
+    for pin in pins.numpy():
+        colored_img = cv2.circle(colored_img, pin, 3, (255, 0, 0), thickness=cv2.FILLED)
 
-for pin in pins.numpy():
-    colored_img = cv2.circle(colored_img, pin, 3, (255, 0, 0), thickness=cv2.FILLED)
-
-cv2.imwrite('./CompleteModel/test4_detected.jpeg', colored_img)
+    cv2.imwrite(f'./CompleteModel/test{i}_detected.jpeg', colored_img)
 
 # Profiling
 # before = time.time()
