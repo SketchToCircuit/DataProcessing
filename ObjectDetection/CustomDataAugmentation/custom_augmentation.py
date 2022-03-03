@@ -17,7 +17,7 @@ def threshold(img):
     return tf.where(img < 200, 0.0, 255.0)
 
 def contrast_boost(img):
-    return tf.clip_by_value(tf.image.adjust_contrast(img, tf.random.uniform(shape=[], minval=1.1, maxval=2.0)), 0.0, 255.0)
+    return tf.clip_by_value(tf.image.adjust_contrast(img, tf.random.uniform(shape=[], minval=2.0, maxval=3.0)), 0.0, 255.0)
 
 def dilate(img, size):
     # https://stackoverflow.com/questions/54686895/tensorflow-dilation-behave-differently-than-morphological-dilation
@@ -107,30 +107,30 @@ def augment(image, boxes):
     '''
     image = tf.ensure_shape(image, [None, None, 3])
 
+    # 20% image warping
+    if tf.random.uniform([]) < 0.2:
+        image = warp_random(image, tf.random.uniform([], minval=0.0, maxval=0.2)) # random strength
+
+    # 70% resize Picture uneven
+    if tf.random.uniform([]) < 0.7:
+        image = uneven_resize(image, span=0.5)
+
+    # resize and pad to square
+    image, boxes = resize_to_square(image, boxes, 640)
+
     # 50% contrast boosting or 50% threshold
     if tf.random.uniform([]) < 0.5:
         image = contrast_boost(image)
     else:
         image = threshold(image)
 
-    # 50% dilation or erosion
-    if tf.random.uniform([]) < 0.5:
-        # 90% erosion, 10% dilation
-        if tf.random.uniform([]) < 0.9:
-            image = erode(image, tf.random.uniform(shape=[], minval=1, maxval=4, dtype=tf.int64)) # between 1 and 3 (inclusive) for erosion (thicker)
+    # 40% dilation or erosion
+    if tf.random.uniform([]) < 0.4:
+        # 80% erosion, 20% dilation
+        if tf.random.uniform([]) < 0.8:
+            image = erode(image, tf.random.uniform(shape=[], minval=2, maxval=4, dtype=tf.int64)) # between 2 and 3 (inclusive) for erosion (thicker)
         else:
             image = dilate(image, 2) # kernel size for dilation (smaller) is always 2
-
-    # 20% image warping
-    if tf.random.uniform([]) < 0.2:
-        image = warp_random(image, tf.random.uniform([], minval=0.05, maxval=0.5)) # random strength
-
-    # 50% resize Picture uneven
-    if tf.random.uniform([]) < 0.5:
-        image = uneven_resize(image, span=0.6)
-
-    # resize and pad to square
-    image, boxes = resize_to_square(image, boxes, 640)
 
     # 50% add  Noise
     if tf.random.uniform([]) < 0.5:
@@ -189,11 +189,11 @@ def test(path: str, num_samples: int):
             xmax = int(xmax)
             ymax = int(ymax)
 
-            cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), thickness=3)
+            cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), thickness=1)
 
         cv2.imshow('', img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    test('./ObjectDetection/data/train-2.tfrecord', 5)
+    test('./ObjectDetection/data/train-0.tfrecord', 20)

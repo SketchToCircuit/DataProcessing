@@ -96,7 +96,7 @@ def export_circuits(circuits: List[RoutedCircuit], path, dummy_sketch_examples, 
         for example in examples:
             writer.write(example.SerializeToString())
 
-def inspect_record(path, num):
+def inspect_record(path, num, required_cmps = None):
     dataset = tf.data.TFRecordDataset(path)
 
     ft_desc = {
@@ -119,7 +119,12 @@ def inspect_record(path, num):
         img = tf.io.decode_jpeg(example['image/encoded']).numpy()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-        objects = zip(example['image/object/bbox/xmin'].values.numpy(), example['image/object/bbox/xmax'].values.numpy(), example['image/object/bbox/ymin'].values.numpy(), example['image/object/bbox/ymax'].values.numpy(), example['image/object/class/text'].values.numpy(), example['image/object/class/label'].values.numpy())
+        texts = example['image/object/class/text'].values.numpy()
+
+        if not required_cmps is None and not any([cmp in list(texts) for cmp in required_cmps]):
+            continue
+
+        objects = zip(example['image/object/bbox/xmin'].values.numpy(), example['image/object/bbox/xmax'].values.numpy(), example['image/object/bbox/ymin'].values.numpy(), example['image/object/bbox/ymax'].values.numpy(), texts, example['image/object/class/label'].values.numpy())
 
         for xmin, xmax, ymin, ymax, text, label in objects:
             xmin *= img.shape[1]
