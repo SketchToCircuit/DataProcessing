@@ -59,7 +59,7 @@ hyperparameters = {
     'box_certainty_combined_scores': 0.2
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v18/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v19/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
 
 for i in range(1, 5):
     img = cv2.imread(f'./CompleteModel/test{i}.jpeg', cv2.IMREAD_COLOR)
