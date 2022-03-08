@@ -7,6 +7,7 @@ import tensorflow as tf
 import Tools.PinDetection.pindetection as pd
 from Tools.split_circuits import split_circuit
 from Tools.dataset_utils import *
+from Tools.squigglylines import Lines
 
 def _getMedianLineThickness(img):
     _, bw = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY_INV)
@@ -213,7 +214,12 @@ def _place_mic_spk(raw_components, pins, center, img):
 
     return (offset[0], offset[1], offset[0] + cmp.component_img.shape[1], offset[1] + cmp.component_img.shape[0]), type
 
-def _place_double_pinned(raw_components, pins, center, img):
+def _place_double_pinned(raw_components, pins, center, line_thickness, img):
+    # 10% probability to only draw a line
+    if random.random() < 0.1:
+        Lines.squigglyline(pins[0][0], pins[0][1], pins[1][0], pins[1][1], img, int(math.ceil(line_thickness)), 0)
+        return None, None
+
     vec_a = pins[0] - center
     vec_b = pins[1] - center
     a = np.dot(vec_a, vec_b) / (math.sqrt(np.sum(np.square(vec_a))) * math.sqrt(np.sum(np.square(vec_b))))
@@ -299,12 +305,13 @@ def place_components(dummy_objects, raw_components, line_thickness, img):
         if len(pins) == 1:
             bbox, label = _place_single_pinned(raw_components, pins[0], center, line_thickness, img)
         elif len(pins) == 2 and len(special_pins) == 0:
-            bbox, label = _place_double_pinned(raw_components, pins, center, img)
+            bbox, label = _place_double_pinned(raw_components, pins, center, line_thickness, img)
         elif len(pins) == 2 and len(special_pins) == 1:
             bbox, label = _place_triple_pinned(raw_components, pins, special_pins[0], special_pin_types[0], img)
-            if bbox is None:
-                continue
         else:
+            continue
+
+        if bbox is None:
             continue
 
         bboxes.append(bbox)
@@ -327,8 +334,8 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
     if dummy_img.shape[:2] != mask_img.shape[:2]:
         return []
 
-    shift_y = random.randint(-int(dummy_img.shape[0] * 0.5), int(dummy_img.shape[0] * 0.5))
-    shift_x = random.randint(-int(dummy_img.shape[1] * 0.5), int(dummy_img.shape[1] * 0.5))
+    shift_y = random.randint(-int(dummy_img.shape[0] * 0.7), int(dummy_img.shape[0] * 0.7))
+    shift_x = random.randint(-int(dummy_img.shape[1] * 0.7), int(dummy_img.shape[1] * 0.7))
     dummy_img = translate_img(dummy_img, shift_x, shift_y)
     mask_img = translate_img(mask_img, shift_x, shift_y)
 
@@ -398,10 +405,9 @@ def main():
     raw_components = pd.import_components('./DataProcessing/pindetection_data/data.json')
     label_convert = _parse_fine_to_coarse('./DataProcessing/ObjectDetection/fine_to_coarse_labels.txt')
 
-    # for i in range(10):
-    #     print(i)
-    #     get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/{i}_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/{i}_mask.jpg', raw_components, label_convert)
-    # get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/4_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/4_mask.jpg', raw_components, label_convert)
+    for i in range(20, 26):
+        print(i)
+        get_examples(f'./DataProcessing/CircuitSynthesis/DummySketchData/{i}_dummy.jpg', f'./DataProcessing/CircuitSynthesis/DummySketchData/{i}_mask.jpg', raw_components, label_convert)
 
 if __name__ == '__main__':
     main()
