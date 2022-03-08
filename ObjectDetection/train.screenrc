@@ -1,6 +1,9 @@
 # don't display the copyright page
 startup_message off
 
+# don't close windows on failure
+zombie kr
+
 # create windows
 screen -t Train ./train_model.sh
 screen -t Eval ./val_model.sh

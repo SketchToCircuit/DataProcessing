@@ -2,7 +2,7 @@
 eval "$(conda shell.bash hook)"
 conda activate neural
 export CUDA_VISIBLE_DEVICES=-1
-export MODEL_VERSION=v17
+export MODEL_VERSION=v19
 python exporter_main_v2.py \
 --pipeline_config_path=./models/ssd_resnet101_640/${MODEL_VERSION}/pipeline.config \
 --trained_checkpoint_dir=./models/ssd_resnet101_640/${MODEL_VERSION}/best_ckps \
