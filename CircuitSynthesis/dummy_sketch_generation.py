@@ -334,8 +334,8 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
     if dummy_img.shape[:2] != mask_img.shape[:2]:
         return []
 
-    shift_y = random.randint(-int(dummy_img.shape[0] * 0.7), int(dummy_img.shape[0] * 0.7))
-    shift_x = random.randint(-int(dummy_img.shape[1] * 0.7), int(dummy_img.shape[1] * 0.7))
+    shift_y = random.randint(-int(dummy_img.shape[0] * 0.5), int(dummy_img.shape[0] * 0.5))
+    shift_x = random.randint(-int(dummy_img.shape[1] * 0.5), int(dummy_img.shape[1] * 0.5))
     dummy_img = translate_img(dummy_img, shift_x, shift_y)
     mask_img = translate_img(mask_img, shift_x, shift_y)
 
@@ -357,10 +357,7 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
         # cv2.imshow('img', img)
         # cv2.waitKey(0)
 
-        for new_bboxs, indices, split_img in split_circuit(bboxes, img):
-            if len(new_bboxs) == 0:
-                continue
-
+        for new_bboxs, indices, split_img, weights in split_circuit(bboxes, img):
             encoded_image = tf.io.encode_jpeg(cv2.cvtColor(split_img, cv2.COLOR_GRAY2BGR)).numpy()
             img_h, img_w = split_img.shape
 
@@ -370,14 +367,16 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
             xmaxs = []
             types = []
             ids = []
+            adjusted_weights = []
 
-            for bbox, idx in zip(new_bboxs, indices):
+            for bbox, idx, w in zip(new_bboxs, indices, weights):
                 types.append(label_convert[labels[idx]][0].encode('utf8'))
                 ids.append(label_convert[labels[idx]][1])
                 xmins.append(min(max(bbox[0], 0.0), 1.0))
                 ymins.append(min(max(bbox[1], 0.0), 1.0))
                 xmaxs.append(min(max(bbox[2], 0.0), 1.0))
                 ymaxs.append(min(max(bbox[3], 0.0), 1.0))
+                adjusted_weights.append(w * 0.7)
 
             tf_label_and_data.append(tf.train.Example(features=tf.train.Features(feature={
                 'image/height': int64_feature(img_h),
@@ -392,6 +391,7 @@ def get_examples(dummy_path, mask_path, raw_components, label_convert):
                 'image/object/bbox/ymax': float_list_feature(ymaxs),
                 'image/object/class/text': bytes_list_feature(types),
                 'image/object/class/label': int64_list_feature(ids),
+                'image/object/weight': float_list_feature(adjusted_weights)
             })))
         
         if i < 3:

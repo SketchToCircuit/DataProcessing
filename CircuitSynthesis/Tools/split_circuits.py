@@ -21,7 +21,7 @@ def split_circuit(bboxs: List[Tuple[float, float, float, float]], img: np.ndarra
         return [([(bbox[0] / img_w,
                     bbox[1] / img_h,
                     bbox[2] / img_w,
-                    bbox[3] / img_h) for bbox in bboxs], list(range(len(bboxs))), img)]
+                    bbox[3] / img_h) for bbox in bboxs], list(range(len(bboxs))), img, [1.0] * len(bboxs))]
     
     num = np.maximum(np.ceil((size - OVERLAP) / (MAX_SUB_SIZE - OVERLAP)), 1).astype(np.uint8)
     sub_size = ((size + (num - 1) * OVERLAP) / num).astype(np.int32)
@@ -38,6 +38,7 @@ def split_circuit(bboxs: List[Tuple[float, float, float, float]], img: np.ndarra
             img_h, img_w = new_img.shape[:2]
             new_bboxs = []
             indices = []
+            weights = []
 
             for i, bbox in enumerate(bboxs):
                 new_box = (np.clip((bbox[0] - offset[1]) / img_w, 0, 1),
@@ -45,13 +46,14 @@ def split_circuit(bboxs: List[Tuple[float, float, float, float]], img: np.ndarra
                     np.clip((bbox[2] - offset[1]) / img_w, 0, 1),
                     np.clip((bbox[3] - offset[0]) / img_h, 0, 1))
 
-                inter_area = (np.clip(new_box[2], 0, 1) - np.clip(new_box[0], 0, 1)) * (np.clip(new_box[3], 0, 1) - np.clip(new_box[1], 0, 1))
+                inter_area = (new_box[2] - new_box[0]) * (new_box[3] - new_box[1])
                 tot_area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) / img_h / img_w
 
                 if inter_area > tot_area * MIN_COMPONENT_AREA_REL:
                     new_bboxs.append(new_box)
                     indices.append(i)
-            
-            result.append((new_bboxs, indices, new_img))
+                    weights.append(max(((inter_area / tot_area) - MIN_COMPONENT_AREA_REL) / (1.0 - MIN_COMPONENT_AREA_REL), 0.0))
+                    
+            result.append((new_bboxs, indices, new_img, weights))
 
     return result

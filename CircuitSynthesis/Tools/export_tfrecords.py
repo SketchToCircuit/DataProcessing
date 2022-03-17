@@ -42,7 +42,7 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
     
     tf_label_and_data = []
 
-    for new_bboxs, indices, img in split_circuit(bboxs, routed_img):
+    for new_bboxs, indices, img, weights in split_circuit(bboxs, routed_img):
         encoded_image = tf.io.encode_jpeg(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)).numpy()
         img_h, img_w = img.shape
 
@@ -52,14 +52,16 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
         xmaxs = []
         types = []
         ids = []
+        adjusted_weights = []
 
-        for bbox, i in zip(new_bboxs, indices):
+        for bbox, i, w in zip(new_bboxs, indices, weights):
             types.append(label_convert[circ.components[i].type_id][0].encode('utf8'))
             ids.append(label_convert[circ.components[i].type_id][1])
             xmins.append(min(max(bbox[0], 0.0), 1.0))
             ymins.append(min(max(bbox[1], 0.0), 1.0))
             xmaxs.append(min(max(bbox[2], 0.0), 1.0))
             ymaxs.append(min(max(bbox[3], 0.0), 1.0))
+            adjusted_weights.append(w * 0.7)
 
         tf_label_and_data.append(tf.train.Example(features=tf.train.Features(feature={
             'image/height': int64_feature(img_h),
@@ -74,6 +76,7 @@ def _circuit_to_examples(circ: RoutedCircuit, label_convert: Dict[str, Tuple[str
             'image/object/bbox/ymax': float_list_feature(ymaxs),
             'image/object/class/text': bytes_list_feature(types),
             'image/object/class/label': int64_list_feature(ids),
+            'image/object/weight': float_list_feature(adjusted_weights)
         })))
 
     return tf_label_and_data
@@ -111,7 +114,8 @@ def inspect_record(path, num, required_cmps = None):
         'image/object/bbox/ymin': tf.io.VarLenFeature(tf.float32),
         'image/object/bbox/ymax': tf.io.VarLenFeature(tf.float32),
         'image/object/class/text': tf.io.VarLenFeature(tf.string),
-        'image/object/class/label': tf.io.VarLenFeature(tf.int64)}
+        'image/object/class/label': tf.io.VarLenFeature(tf.int64),
+        'image/object/weight': tf.io.VarLenFeature(tf.float32)}
 
     dataset = dataset.map(lambda example: tf.io.parse_single_example(example, ft_desc))
 
