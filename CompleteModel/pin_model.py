@@ -31,6 +31,9 @@ class PinDetectionModel(tf.Module):
         peak_pos, peak_vals, batch_ind, _ = sleap.nn.peak_finding.find_local_peaks(heatmaps, threshold=self._hyperparameters['pin_peak_thresh'], refinement='integral')
         peak_pos = peak_pos / tf.cast(tf.shape(heatmaps)[1], tf.float32)
 
+        # tf.print(tf.gather_nd(peak_pos, tf.where(batch_ind == 0)), summarize=-1)
+        # tf.print(heatmaps[0], summarize=-1, output_stream='file://test.txt')
+
         classes_arr = tf.TensorArray(tf.int32, size=0, dynamic_size=True, element_shape=tf.TensorShape((None)))
         batch_ids_arr = tf.TensorArray(tf.int32, size=0, dynamic_size=True, element_shape=tf.TensorShape((None)))
         pins_arr = tf.TensorArray(tf.float32, size=0, dynamic_size=True, element_shape=tf.TensorShape((2)))
@@ -65,6 +68,7 @@ class PinDetectionModel(tf.Module):
         return pins
 
     S3 = 34
+    OPV = 27
     MIC = 25
     SPK = 35
     POT = 30
@@ -78,7 +82,7 @@ class PinDetectionModel(tf.Module):
                         2, 2, 2, 2, 2,
                         2, 2], dtype=tf.int32, name='ID_TO_NUM_PINS')
 
-    def _assert_correct_s3(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
+    def _assert_correct_s3_opv(self, pins: tf.Tensor, pin_vals: tf.Tensor, num_pins: tf.Tensor, norm_directions: tf.Tensor, directions: tf.Tensor):
         # cannot reliable reconstruct with 1 pin
         if num_pins == 1:
             return tf.constant([])
@@ -97,18 +101,19 @@ class PinDetectionModel(tf.Module):
 
             for indices in helper.k_out_of_n_combinations(3, num_pins):
                 # check all 3 possibilities for the single pin -> choose best for score
-                min_pos_error = tf.constant(tf.float32.max, tf.float32)
+                min_error = tf.constant(tf.float32.max, tf.float32)
                 for i in tf.range(3):
                     a = indices[tf.math.floormod(i + 1, 3)]
                     b = indices[tf.math.floormod(i + 2, 3)]
+                    alpha = tf.math.atan2(directions[indices[i]][1], directions[indices[i]][0])
 
-                    pos_error = helper.vector_length(directions[indices[i]] + helper.normalize_vector(directions[a] + directions[b]) * (helper.vector_length(directions[a]) + helper.vector_length(directions[b])) / 2.0)
-                    pos_error = tf.squeeze(pos_error)
+                    pos_error = helper.vector_length(directions[indices[i]] + helper.normalize_vector(directions[a] + directions[b]) * (helper.vector_length(directions[a]) + helper.vector_length(directions[b])) / 2.0) 
+                    error = (tf.squeeze(pos_error) + tf.math.square(tf.math.sin(2 * alpha))) / 2.0
 
-                    if pos_error < min_pos_error:
-                        min_pos_error = pos_error
+                    if error < min_error:
+                        min_error = error
 
-                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - min_pos_error * (1.0 - self._hyperparameters['pin_val_weight'])
+                score = tf.reduce_mean(tf.gather(pin_vals, indices)) * self._hyperparameters['pin_val_weight'] - min_error * (1.0 - self._hyperparameters['pin_val_weight'])
                 
                 if score > max_score:
                     best_pins = tf.ensure_shape(tf.gather_nd(pins, tf.expand_dims(indices, -1)), (3,2))
@@ -247,8 +252,8 @@ class PinDetectionModel(tf.Module):
         if num_pins == PinDetectionModel.ID_TO_NUM_PINS[class_id]:
             return pins
             
-        if class_id == PinDetectionModel.S3:
-            return self._assert_correct_s3(pins, pin_vals, num_pins, norm_directions, directions)
+        if class_id == PinDetectionModel.S3 or class_id == PinDetectionModel.OPV:
+            return self._assert_correct_s3_opv(pins, pin_vals, num_pins, norm_directions, directions)
         elif class_id == PinDetectionModel.MIC or class_id == PinDetectionModel.SPK:
             return self._assert_correct_mic_spk(pins, pin_vals, num_pins, norm_directions, directions)
         elif class_id == PinDetectionModel.POT:

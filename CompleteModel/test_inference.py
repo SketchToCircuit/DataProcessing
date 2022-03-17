@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # set path to cupti
 os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64'
@@ -51,17 +51,17 @@ from combined_model import CombinedModel
 hyperparameters = {
     'pin_peak_thresh': 0.2,
     'pin_val_weight': 0.5,
-    'box_final_thresh': 0.5,
-    'box_overlap_thresh': 0.3,
-    'box_iou_weight': 0.2,
-    'box_weighting_overlap': 0.7,
-    'box_certainty_cluster_count': 0.4,
-    'box_certainty_combined_scores': 0.2
+    'box_final_thresh': 0.7,
+    'box_overlap_thresh': 0.7,
+    'box_different_class_iou_thresh': 0.8,
+    'box_iou_weight': 0.3,
+    'box_certainty_cluster_count': 0.8,
+    'box_certainty_combined_scores': 0.5
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v19/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v20/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
 
-for i in range(1, 5):
+for i in range(1, 2):
     img = cv2.imread(f'./CompleteModel/test{i}.jpeg', cv2.IMREAD_COLOR)
     img = normalize_avg_line_thickness(img, 3)
     classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()
@@ -74,10 +74,3 @@ for i in range(1, 5):
         colored_img = cv2.circle(colored_img, pin, 3, (255, 0, 0), thickness=cv2.FILLED)
 
     cv2.imwrite(f'./CompleteModel/test{i}_detected.jpeg', colored_img)
-
-# Profiling
-# before = time.time()
-# for i in range(20):
-#     classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', image)[1])).values()
-# duration = time.time() - before
-# print(f'{duration / 20.0}s per image!')

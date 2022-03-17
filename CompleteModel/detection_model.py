@@ -1,6 +1,4 @@
 import tensorflow as tf
-import numpy as np
-from typing import Tuple, List
 
 class ObjectDetectionModel(tf.Module):
     def __init__(self, saved_model_path, num_classes = 42):
@@ -13,12 +11,13 @@ class ObjectDetectionModel(tf.Module):
         # model is exported for float-images, because uint8 datatype doesn't support batched inference.
         detections = self._model(tf.cast(imges, tf.float32))
 
-        indices = tf.squeeze(tf.where(detections['detection_scores'] > 0.2))
+        indices = tf.squeeze(tf.where(detections['detection_scores'] > 0.1))
 
         boxes = tf.ensure_shape(tf.gather_nd(detections['detection_boxes'], indices), (None, 4))
 
         class_probabilities = tf.gather_nd(detections['detection_multiclass_scores'], indices)
-        class_probabilities = -tf.math.log(1.0 / class_probabilities - 1.0)
-        class_probabilities = tf.nn.softmax(class_probabilities)
+        class_probabilities = class_probabilities / tf.reduce_sum(class_probabilities, axis=-1, keepdims=True)
+        # class_probabilities = -tf.math.log(1.0 / class_probabilities - 1.0)
+        # class_probabilities = tf.nn.softmax(class_probabilities)
 
         return boxes, tf.cast(indices[:, 0], tf.int32), class_probabilities[:, 1:]
