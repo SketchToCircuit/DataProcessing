@@ -1,3 +1,4 @@
+import math
 import tensorflow as tf
 from tensorboard import program
 import os
@@ -33,10 +34,31 @@ def main():
     tb_callback = tf.keras.callbacks.TensorBoard(log_dir=config.LOGDIR,update_freq=1,write_graph=True, write_images=True,histogram_freq=1)
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=config.TRAINMODELPATH,save_freq=len(list(trainDs))*10,save_weights_only=True,verbose=1)
 
+    # adaptive wing loss from: https://arxiv.org/pdf/1904.07399.pdf
+    # weigh false positives more
+    def adaptive_wing_loss(y_true, y_pred):
+        w = 14.0
+        a = 2.1
+        e = 1.0
+        theta = 0.5
+
+        error = tf.abs(y_true - y_pred)
+
+        first = w * tf.math.log(1.0 + tf.math.pow(error / e, a - y_true))
+        A = w * (1.0 / (1.0 + tf.pow(theta / e, a - y_true))) * (a - y_true) * (tf.pow(theta / e, a - y_true - 1.0)) / e
+        C = (theta * A - w * tf.math.log(1.0 + tf.math.pow(error / e, a - y_true)))
+        second = A * error - C
+        
+        false_positive = tf.maximum(y_pred - y_true, 0.0) * (1.0 - y_true)
+        loss = tf.where(error < theta, first, second)
+        loss = loss * false_positive * 4.0 + loss * (1.0 - false_positive)
+
+        return tf.reduce_mean(loss, axis=[1, 2, 3])
+
     model = models.getModel()
     if(os.path.exists(os.path.join(config.TRAINMODELDIR, "checkpoint"))):
         model.load_weights(config.TRAINMODELPATH)
-    model.compile(optimizer="adam", loss="mse", metrics=["accuracy"])
+    model.compile(optimizer="adam", loss=adaptive_wing_loss)
     model.summary()
     model.fit(trainDs, epochs=400, validation_data=valDs,callbacks=[tb_callback, cp_callback,CustomTensorboard(tbDataSet)])
 
@@ -68,18 +90,18 @@ def noAugment(img, label, pinImage):
 
 @tf.function
 def dataAugment(img, label, pinImage):
-    #Turn Images randomly
-    angle = tf.random.uniform((1,), -20,20, dtype=tf.float32)
-    img = tfa.image.rotate(img, angle, fill_mode="nearest")
-    pinImage = tfa.image.rotate(pinImage, angle, fill_mode="nearest")
+    #Turn Images randomly    
+    angle = tf.random.uniform((), -math.pi, math.pi, dtype=tf.float32)
+    img = tfa.image.rotate(img, angle, fill_mode="constant", fill_value=1.0)
+    pinImage = tfa.image.rotate(pinImage, angle, fill_mode="constant", fill_value=0.0)
 
-    pinImage = tfa.image.gaussian_filter2d(pinImage, 24, 2.7)
+    pinImage = tfa.image.gaussian_filter2d(pinImage, 24, 1.7)
 
-    if(randint(1,4) == 1):
+    if(tf.random.uniform(()) < 0.33):
         pinImage = tf.image.flip_left_right(pinImage)
         img = tf.image.flip_left_right(img)
     
-    if(randint(1,4) == 2):
+    if(tf.random.uniform(()) < 0.33):
         pinImage = tf.image.flip_up_down(pinImage)
         img = tf.image.flip_up_down(img)
 
