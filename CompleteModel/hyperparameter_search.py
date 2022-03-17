@@ -92,14 +92,14 @@ def mutate_hyperparameters(param, std):
 
 def main():
     hyperparameters = {
-        'pin_peak_thresh': 0.2,
-        'pin_val_weight': 0.5,
-        'box_final_thresh': 0.578,
-        'box_overlap_thresh': 0.4,
-        'box_iou_weight': 0.14,
-        'box_weighting_overlap': 0.85,
-        'box_certainty_cluster_count': 0.59,
-        'box_certainty_combined_scores': 0.15
+    'pin_peak_thresh': 0.2,
+    'pin_val_weight': 0.5,
+    'box_final_thresh': 0.6,
+    'box_overlap_thresh': 0.7,
+    'box_different_class_iou_thresh': 0.8,
+    'box_iou_weight': 0.3,
+    'box_certainty_cluster_count': 0.8,
+    'box_certainty_combined_scores': 0.5
     }
 
     best_score = -math.inf

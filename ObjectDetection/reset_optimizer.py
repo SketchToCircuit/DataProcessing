@@ -20,11 +20,11 @@ import numpy as np
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 
-SRC_CKPT = './ObjectDetection/models/ssd_resnet101_640/v19/best_ckps/ckpt-318'
-DEST_CKPT = './ObjectDetection/models/ssd_resnet101_640/test/ckpt'
+SRC_CKPT = './ObjectDetection/models/ssd_resnet101_640/v19/best_ckps/ckpt-977'
+DEST_CKPT = './ObjectDetection/models/ssd_resnet101_640/v20/ckpt'
 PIPELINE_CONFIG_PATH = './ObjectDetection/models/ssd_resnet101_640/v19/pipeline.config'
 MODEL_DIR = './ObjectDetection/models/ssd_resnet101_640/v19/'
-FINE_TUNE_CHECKPOINT = './ObjectDetection/models/ssd_resnet101_640/v18/best_ckps/ckpt-178'
+FINE_TUNE_CHECKPOINT = './ObjectDetection/pretrained_models/ssd_resnet101_640/checkpoint/ckpt-0'
 
 def _compute_losses_and_predictions_dicts(
     model, features, labels,

@@ -40,7 +40,7 @@ hyperparameters = {
     'box_certainty_combined_scores': 0.2
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v20/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
 
 signature = {tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY : model.__call__.get_concrete_function(tf.TensorSpec((None), dtype=tf.string))}
 tf.saved_model.save(model, './CompleteModel/Exported/1', signature)
