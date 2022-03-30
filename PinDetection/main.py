@@ -4,8 +4,6 @@ from tensorboard import program
 import os
 import json
 from tensorflow import keras
-from tensorflow.keras import layers
-from random import randint, randrange
 import tensorflow_addons as tfa
 
 import config
@@ -35,7 +33,6 @@ def main():
     cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=config.TRAINMODELPATH,save_freq=len(list(trainDs))*10,save_weights_only=True,verbose=1)
 
     # adaptive wing loss from: https://arxiv.org/pdf/1904.07399.pdf
-    # weigh false positives more
     def adaptive_wing_loss(y_true, y_pred):
         w = 14.0
         a = 2.1
@@ -51,9 +48,14 @@ def main():
         
         false_positive = tf.maximum(y_pred - y_true, 0.0) * (1.0 - y_true)
         loss = tf.where(error < theta, first, second)
-        loss = loss * false_positive * 4.0 + loss * (1.0 - false_positive)
+        loss = loss * false_positive * 4.5 + loss * (1.0 - false_positive)
 
-        return tf.reduce_mean(loss, axis=[1, 2, 3])
+        loss = tf.reduce_mean(loss, axis=[1, 2, 3])
+
+        # increase the weight of larger losses
+        loss = loss * tf.exp(loss)
+
+        return loss
 
     model = models.getModel()
     if(os.path.exists(os.path.join(config.TRAINMODELDIR, "checkpoint"))):
@@ -71,7 +73,7 @@ class CustomTensorboard(keras.callbacks.Callback):
             self.sortedComps = getComponentsSorted()
 
         def on_epoch_end(self, epoch, logs=None):
-            if(not (epoch % 5 == 0)): return
+            if(not (epoch % 20 == 0)): return
             inputs, outputs = zip(*self.tbDataSet)
             inputs = inputs[0]
             outputs = outputs[0]
@@ -86,16 +88,22 @@ class CustomTensorboard(keras.callbacks.Callback):
 
 @tf.function
 def noAugment(img, label, pinImage):
+    pinImage = tfa.image.gaussian_filter2d(pinImage, 6, 1.7)
     return ({"input1": img, "input2": label}, pinImage)
 
 @tf.function
 def dataAugment(img, label, pinImage):
+    img = tf.expand_dims(img, 0)
+
+    # random cutout in the shape of a stroke
+    cutout_size = tf.stack([tf.random.uniform([], minval=1, maxval=2, dtype=tf.int32), tf.random.uniform([], minval=5, maxval=20, dtype=tf.int32)], 0) * 2
+    if tf.random.uniform([]) < 0.7:
+        img = tfa.image.random_cutout(img, tf.random.shuffle(cutout_size))
+
     #Turn Images randomly    
     angle = tf.random.uniform((), -math.pi, math.pi, dtype=tf.float32)
     img = tfa.image.rotate(img, angle, fill_mode="constant", fill_value=1.0)
     pinImage = tfa.image.rotate(pinImage, angle, fill_mode="constant", fill_value=0.0)
-
-    pinImage = tfa.image.gaussian_filter2d(pinImage, 24, 1.7)
 
     if(tf.random.uniform(()) < 0.33):
         pinImage = tf.image.flip_left_right(pinImage)
@@ -105,6 +113,14 @@ def dataAugment(img, label, pinImage):
         pinImage = tf.image.flip_up_down(pinImage)
         img = tf.image.flip_up_down(img)
 
+    # random cutout in the shape of a stroke
+    cutout_size = tf.stack([tf.random.uniform([], minval=1, maxval=2, dtype=tf.int32), tf.random.uniform([], minval=5, maxval=20, dtype=tf.int32)], 0) * 2
+    if tf.random.uniform([]) < 0.5:
+        img = tfa.image.random_cutout(img, tf.random.shuffle(cutout_size))
+
+    pinImage = tfa.image.gaussian_filter2d(pinImage, 6, 1.7)
+    img = tf.squeeze(img, 0)
+
     return ({"input1": img, "input2": label}, pinImage)
 
 @tf.function
@@ -112,11 +128,7 @@ def dataProc(img, pins, label):
     oldWidth = tf.cast(tf.shape(img)[1], tf.float32)
     oldHeigt = tf.cast(tf.shape(img)[0], tf.float32)
 
-    img = tf.cast(tf.bitwise.invert(img), dtype=tf.int32)
-    img = tf.cast(tf.image.resize_with_pad(img,config.IMG_SIZE, config.IMG_SIZE, method=tf.image.ResizeMethod.AREA), dtype=tf.int32)
-    white = tf.ones((config.IMG_SIZE, config.IMG_SIZE, 1), dtype=tf.int32)*255
-    img = tf.subtract(white, img)
-    img = tf.divide(img, 255)
+    img = tf.where((tf.image.resize_with_pad(255 - img, config.IMG_SIZE, config.IMG_SIZE, method=tf.image.ResizeMethod.AREA)) < 50, 1.0, 0.0)
 
     pins = tf.cast(pins, tf.float32)
     box1 = tf.concat([tf.divide(pins[0][1],oldHeigt),tf.divide(pins[0][0],oldWidth),tf.divide(pins[0][1],oldHeigt),tf.divide(pins[0][0],oldWidth)], 0)
@@ -178,17 +190,16 @@ def tbjsonGenerator():
         pins = None
         label = None
         cmpPath = None
-        for entry in data[component]:
-            cmpPath = os.path.join("/mnt/hdd2/Sketch2Circuit/",os.path.relpath(entry["component_path"]))
-            label = config.LABEL_CONVERT_DICT[entry["type"]][1] - 1
-            pins = [[-1,-1],[-1,-1],[-1,-1]]
-            count = 0
-            for pinNmbr in entry["pins"]:
-                pins[count][0] = entry["pins"][pinNmbr]["position"][0]
-                pins[count][1] = entry["pins"][pinNmbr]["position"][1]
-                count = count + 1
-            pins = [pins[0][0],pins[0][1]],[pins[1][0],pins[1][1]],[pins[2][0],pins[2][1]]
-            break
+        entry = data[component][0]
+        cmpPath = os.path.join("/mnt/hdd2/Sketch2Circuit/",os.path.relpath(entry["component_path"]))
+        label = config.LABEL_CONVERT_DICT[entry["type"]][1] - 1
+        pins = [[-1,-1],[-1,-1],[-1,-1]]
+        count = 0
+        for pinNmbr in entry["pins"]:
+            pins[count][0] = entry["pins"][pinNmbr]["position"][0]
+            pins[count][1] = entry["pins"][pinNmbr]["position"][1]
+            count = count + 1
+        pins = [pins[0][0],pins[0][1]],[pins[1][0],pins[1][1]],[pins[2][0],pins[2][1]]
         yield cmpPath, label, pins
 
 #Return 

@@ -15,9 +15,8 @@ class ObjectDetectionModel(tf.Module):
 
         boxes = tf.ensure_shape(tf.gather_nd(detections['detection_boxes'], indices), (None, 4))
 
+        # detection scores are after sigmoid
         class_probabilities = tf.gather_nd(detections['detection_multiclass_scores'], indices)
         class_probabilities = class_probabilities / tf.reduce_sum(class_probabilities, axis=-1, keepdims=True)
-        # class_probabilities = -tf.math.log(1.0 / class_probabilities - 1.0)
-        # class_probabilities = tf.nn.softmax(class_probabilities)
 
         return boxes, tf.cast(indices[:, 0], tf.int32), class_probabilities[:, 1:]

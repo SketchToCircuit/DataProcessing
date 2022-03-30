@@ -93,10 +93,9 @@ def mutate_hyperparameters(param, std):
 def main():
     hyperparameters = {
     'pin_peak_thresh': 0.2,
-    'pin_val_weight': 0.5,
-    'box_final_thresh': 0.6,
+    'pin_val_weight': 0.4,
+    'box_final_thresh': 0.7,
     'box_overlap_thresh': 0.7,
-    'box_different_class_iou_thresh': 0.8,
     'box_iou_weight': 0.3,
     'box_certainty_cluster_count': 0.8,
     'box_certainty_combined_scores': 0.5
@@ -110,11 +109,11 @@ def main():
         model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v14/saved_model', './PinDetection/exported/1', hyperparameters=hyperparameters, do_not_convert_variables=True)
 
         summed_score = 0
-        for i in range(5):
-            img = cv2.imread(f'./CompleteModel/TestData/test{i+1}.jpeg', cv2.IMREAD_GRAYSCALE)
+        for j in range(5):
+            img = cv2.imread(f'./CompleteModel/TestData/test{j+1}.jpeg', cv2.IMREAD_GRAYSCALE)
             classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()
 
-            with open(f'./CompleteModel/TestData/test{i+1}.json') as f:
+            with open(f'./CompleteModel/TestData/test{j+1}.json') as f:
                 true_components = json.load(f)
 
             summed_score += object_detection_score(list(classes.numpy()), list(boxes.numpy()), true_components)
@@ -125,7 +124,7 @@ def main():
             print(termcolor.colored('New best hyperparameterse:', 'red'))
             print(f'Score: {summed_score}')
             print(best_hyperparameters)
-        
+
         hyperparameters = mutate_hyperparameters(best_hyperparameters, 1.0 / (i / 20.0 + 1))
 
 main()

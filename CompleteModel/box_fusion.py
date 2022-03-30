@@ -15,7 +15,6 @@ class FuseBoxes(tf.Module):
             hyperparameters = {
                 'box_final_thresh': 0.7,
                 'box_overlap_thresh': 0.7,
-                'box_different_class_iou_thresh': 0.8,
                 'box_iou_weight': 0.3,
                 'box_certainty_cluster_count': 0.8,
                 'box_certainty_combined_scores': 0.5
@@ -68,7 +67,7 @@ class FuseBoxes(tf.Module):
                 (certainties, tf.TensorShape((None, )))])
 
             # start with object with higest score
-            box_id = tf.argmax(tf.reduce_sum(combined_scores, axis=1))
+            box_id = tf.argmax(tf.reduce_max(combined_scores, axis=1))
 
             box = boxes[box_id]
             combined_score = combined_scores[box_id]
@@ -82,11 +81,8 @@ class FuseBoxes(tf.Module):
             # mask for objects with the same (combined) class
             same_class = tf.where(tf.argmax(combined_scores, axis=-1) == combined_class, 1.0, 0.0)
 
-            # mask for objects with very high overlap and not the same class
-            different_class_high_overlap = tf.where(tf.logical_and(tf.argmax(combined_scores, axis=-1) != combined_class, iou > self._hyperparameters['box_different_class_iou_thresh']), 1.0, 0.0)
-
             # indices for this cluster
-            cluster_indices = tf.squeeze(tf.where(tf.logical_or(overlap * same_class > overlap_threshold, different_class_high_overlap > 0.5)), axis=-1)
+            cluster_indices = tf.squeeze(tf.where(overlap * same_class > overlap_threshold), axis=-1)
 
             # get selected boxes, scores and weights (including starter box)
             selected_boxes = tf.gather(boxes, cluster_indices)

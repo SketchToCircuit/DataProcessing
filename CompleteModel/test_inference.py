@@ -50,18 +50,17 @@ from combined_model import CombinedModel
 
 hyperparameters = {
     'pin_peak_thresh': 0.2,
-    'pin_val_weight': 0.5,
+    'pin_val_weight': 0.4,
     'box_final_thresh': 0.7,
     'box_overlap_thresh': 0.7,
-    'box_different_class_iou_thresh': 0.8,
     'box_iou_weight': 0.3,
     'box_certainty_cluster_count': 0.8,
     'box_certainty_combined_scores': 0.5
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v20/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v21/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
 
-for i in range(1, 2):
+for i in range(1, 5):
     img = cv2.imread(f'./CompleteModel/test{i}.jpeg', cv2.IMREAD_COLOR)
     img = normalize_avg_line_thickness(img, 3)
     classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()

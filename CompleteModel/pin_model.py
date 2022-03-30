@@ -22,17 +22,21 @@ class PinDetectionModel(tf.Module):
 
         self._hyperparameters = hyperparameters
 
+    @staticmethod
+    def _erode(img, size):
+        str_elem = tf.zeros((size, size, 1), dtype=tf.float32)
+        img = tf.nn.erosion2d(img, filters=str_elem, strides=(1,1,1,1), dilations=(1,1,1,1), padding="SAME", data_format="NHWC")
+        return img
+
     @tf.function(input_signature=[tf.TensorSpec((None, None, None, 1), dtype=tf.float32), tf.TensorSpec((None, 42), dtype=tf.float32), tf.TensorSpec((None,), dtype=tf.float32), tf.TensorSpec((None, 2), dtype=tf.float32)], experimental_follow_type_hints=True)
     def __call__(self, imges: tf.Tensor, class_proposals: tf.Tensor, unscaled_sizes: tf.Tensor, patch_offsets: tf.Tensor):
-        imges = tf.image.resize(imges, self._img_size)
+        imges = tf.image.resize(imges, self._img_size, tf.image.ResizeMethod.AREA)
         heatmaps = self._model({"input1": imges, "input2": class_proposals})
+        heatmaps = tf.where(PinDetectionModel._erode(tf.image.resize(imges, tf.shape(heatmaps)[1:3], tf.image.ResizeMethod.AREA), 3) < 0.5, heatmaps, 0.0)
 
         # get local maxima (order x,y)
         peak_pos, peak_vals, batch_ind, _ = sleap.nn.peak_finding.find_local_peaks(heatmaps, threshold=self._hyperparameters['pin_peak_thresh'], refinement='integral')
         peak_pos = peak_pos / tf.cast(tf.shape(heatmaps)[1], tf.float32)
-
-        # tf.print(tf.gather_nd(peak_pos, tf.where(batch_ind == 0)), summarize=-1)
-        # tf.print(heatmaps[0], summarize=-1, output_stream='file://test.txt')
 
         classes_arr = tf.TensorArray(tf.int32, size=0, dynamic_size=True, element_shape=tf.TensorShape((None)))
         batch_ids_arr = tf.TensorArray(tf.int32, size=0, dynamic_size=True, element_shape=tf.TensorShape((None)))
@@ -45,7 +49,6 @@ class PinDetectionModel(tf.Module):
                 pin_vals = tf.gather_nd(peak_vals, tf.where(batch_ind == i))
 
                 class_id = tf.argmax(class_proposals[i], output_type=tf.int32)
-
                 pins = self._assert_correct_pin_count(pins, pin_vals, class_id)
             
                 if tf.size(pins) != 0:                
@@ -108,7 +111,7 @@ class PinDetectionModel(tf.Module):
                     alpha = tf.math.atan2(directions[indices[i]][1], directions[indices[i]][0])
 
                     pos_error = helper.vector_length(directions[indices[i]] + helper.normalize_vector(directions[a] + directions[b]) * (helper.vector_length(directions[a]) + helper.vector_length(directions[b])) / 2.0) 
-                    error = (tf.squeeze(pos_error) + tf.math.square(tf.math.sin(2 * alpha))) / 2.0
+                    error = tf.squeeze(pos_error) * 0.4 + tf.math.square(tf.math.sin(2 * alpha)) * 0.6
 
                     if error < min_error:
                         min_error = error

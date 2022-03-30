@@ -41,7 +41,7 @@ class IPinDetection(ABC):
     def NAME(cls): raise NotImplementedError
 
     @classmethod
-    def match(cls, component_type: str) -> bool :
+    def match(cls, component_type: str) -> bool:
         return component_type in cls._COMP_TYPES
     
     @staticmethod

@@ -7,7 +7,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 model_dir = os.path.join(os.path.dirname(__file__), "exported/")
 
-version = 2
+version = 3
 export_path = os.path.join(model_dir, str(version))
 
 model = models.getModel()

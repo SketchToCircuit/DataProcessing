@@ -38,9 +38,7 @@ class SplitImage():
         return: Tuple of images and original sizes plus offsets -> (images, orig_sizes, offsets)
             - images: tf.Tensor; shape=(None, result_size, result_size, 3); dtype=tf.uint8
             - offsets: tf.Tensor; shape=(None, 2); dtype=tf.int32 with y and x of upper left corners of patches
-            - orig_sub_size: tf.Tensor; shape=(2); dtype=tf.tf.int32 with h and w of patches before scaling
-            - all 'None' shapes are the same size
-        '''
+            - orig_sub_size: tf.Tensor; shape=(2); dtype=tf.tf.int32 with h and w of patches before scaling        '''
         size = tf.shape(img)
 
         if tf.reduce_all(size < self.max_sub_size):
