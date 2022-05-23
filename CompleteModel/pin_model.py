@@ -32,8 +32,9 @@ class PinDetectionModel(tf.Module):
     def __call__(self, imges: tf.Tensor, class_proposals: tf.Tensor, unscaled_sizes: tf.Tensor, patch_offsets: tf.Tensor):
         imges = tf.image.resize(imges, self._img_size, tf.image.ResizeMethod.AREA)
         heatmaps = self._model({"input1": imges, "input2": class_proposals})
-        heatmaps = tf.where(PinDetectionModel._erode(tf.image.resize(imges, tf.shape(heatmaps)[1:3], tf.image.ResizeMethod.AREA), 3) < 0.5, heatmaps, 0.0)
-
+        
+        # heatmaps = tf.where(PinDetectionModel._erode(tf.image.resize(imges, tf.shape(heatmaps)[1:3], tf.image.ResizeMethod.AREA), 101) < 0.5, heatmaps, 0.0)
+        
         # get local maxima (order x,y)
         peak_pos, peak_vals, batch_ind, _ = sleap.nn.peak_finding.find_local_peaks(heatmaps, threshold=self._hyperparameters['pin_peak_thresh'], refinement='integral')
         peak_pos = peak_pos / tf.cast(tf.shape(heatmaps)[1], tf.float32)

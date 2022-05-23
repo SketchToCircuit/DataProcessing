@@ -1,5 +1,5 @@
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # set path to cupti
 os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda/lib64'
@@ -60,7 +60,7 @@ hyperparameters = {
 
 model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v21/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
 
-for i in range(1, 5):
+for i in range(1, 8):
     img = cv2.imread(f'./CompleteModel/test{i}.jpeg', cv2.IMREAD_COLOR)
     img = normalize_avg_line_thickness(img, 3)
     classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()

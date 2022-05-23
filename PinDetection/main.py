@@ -18,7 +18,7 @@ else:
 def main():
     tbDataSet = tf.data.Dataset.from_generator(tbjsonGenerator, output_types=(tf.string, tf.int32, tf.double))
     tbDataSet = tbDataSet.map(loadImage,num_parallel_calls=tf.data.AUTOTUNE).map(dataProc,num_parallel_calls=tf.data.AUTOTUNE)
-    tbDataSet = tbDataSet.map(dataAugment,num_parallel_calls=tf.data.AUTOTUNE).batch(len(list(tbDataSet)), num_parallel_calls=tf.data.AUTOTUNE, deterministic=False).prefetch(10)
+    tbDataSet = tbDataSet.map(noAugment,num_parallel_calls=tf.data.AUTOTUNE).batch(len(list(tbDataSet)), num_parallel_calls=tf.data.AUTOTUNE, deterministic=False).prefetch(10)
 
     dataSet = tf.data.Dataset.from_generator(jsonGenerator, output_types=(tf.string, tf.int32, tf.double))
     dataSet = dataSet.map(loadImage,num_parallel_calls=tf.data.AUTOTUNE).map(dataProc,num_parallel_calls=tf.data.AUTOTUNE)
@@ -60,7 +60,7 @@ def main():
     model = models.getModel()
     if(os.path.exists(os.path.join(config.TRAINMODELDIR, "checkpoint"))):
         model.load_weights(config.TRAINMODELPATH)
-    model.compile(optimizer="adam", loss=adaptive_wing_loss)
+    model.compile(optimizer="adam", loss="mse")
     model.summary()
     model.fit(trainDs, epochs=400, validation_data=valDs,callbacks=[tb_callback, cp_callback,CustomTensorboard(tbDataSet)])
 
@@ -73,7 +73,7 @@ class CustomTensorboard(keras.callbacks.Callback):
             self.sortedComps = getComponentsSorted()
 
         def on_epoch_end(self, epoch, logs=None):
-            if(not (epoch % 20 == 0)): return
+            if(not (epoch % 5 == 0)): return
             inputs, outputs = zip(*self.tbDataSet)
             inputs = inputs[0]
             outputs = outputs[0]
