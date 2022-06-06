@@ -58,9 +58,9 @@ hyperparameters = {
     'box_certainty_combined_scores': 0.5
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v21/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/centernet_hourglass104_512_v2/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
 
-for i in range(1, 8):
+for i in range(1, 2):
     img = cv2.imread(f'./CompleteModel/test{i}.jpeg', cv2.IMREAD_COLOR)
     img = normalize_avg_line_thickness(img, 3)
     classes, boxes, pins, pin_cmp_ids = model(base64.urlsafe_b64encode(cv2.imencode('.jpg', img)[1])).values()

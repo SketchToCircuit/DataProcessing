@@ -1,0 +1,86 @@
+model {
+  ssd {
+    num_classes: 16
+    image_resizer {
+      keep_aspect_ratio_resizer {
+        min_dimension: 768
+        max_dimension: 768
+        pad_to_max_dimension: true
+        per_channel_pad_value: [1.0, 1.0, 1.0]
+        resize_method: AREA
+      }
+    }
+
+    loss {
+      localization_loss {
+        weighted_smooth_l1 {
+        }
+      }
+      classification_loss {
+        weighted_sigmoid_focal {
+          gamma: 2.0
+          alpha: 0.25
+        }
+      }
+      classification_weight: 3.0
+      localization_weight: 1.0
+    }
+  }
+}
+
+train_config {
+  batch_size: 10
+
+  optimizer {
+    momentum_optimizer {
+      learning_rate {
+        cosine_decay_learning_rate {
+          learning_rate_base: 0.04
+          total_steps: 3000
+          warmup_learning_rate: 0.014
+          warmup_steps: 700
+        }
+      }
+      momentum_optimizer_value: 0.8999999761581421
+    }
+    use_moving_average: false
+  }
+
+  data_augmentation_options {
+    custom_augmentation {
+    }
+  }
+  
+  fine_tune_checkpoint: "./pretrained_models/efficientdet_d2/checkpoint/ckpt-0"
+  num_steps: 300000
+  startup_delay_steps: 0.0
+  replicas_to_aggregate: 8
+  max_number_of_boxes: 100
+  unpad_groundtruth_tensors: false
+  fine_tune_checkpoint_type: "detection"
+  use_bfloat16: false
+  fine_tune_checkpoint_version: V2
+}
+  
+train_input_reader: {
+  label_map_path: "./data/label_map.pbtxt"
+  tf_record_input_reader {
+    input_path: "./data/train-*.tfrecord"
+  }
+}
+  
+eval_config: {
+  metrics_set: "coco_detection_metrics"
+  use_moving_averages: false
+  batch_size: 1;
+}
+  
+eval_input_reader: {
+  label_map_path: "./data/label_map.pbtxt"
+  shuffle: false
+  num_epochs: 1
+  tf_record_input_reader {
+    input_path: "./data/val.tfrecord"
+  }
+}
+  

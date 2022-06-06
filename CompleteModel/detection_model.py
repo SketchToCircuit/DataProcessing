@@ -19,4 +19,4 @@ class ObjectDetectionModel(tf.Module):
         class_probabilities = tf.gather_nd(detections['detection_multiclass_scores'], indices)
         class_probabilities = class_probabilities / tf.reduce_sum(class_probabilities, axis=-1, keepdims=True)
 
-        return boxes, tf.cast(indices[:, 0], tf.int32), class_probabilities[:, 1:]
+        return boxes, tf.cast(indices[:, 0], tf.int32), class_probabilities

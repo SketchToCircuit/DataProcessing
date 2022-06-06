@@ -2,3 +2,4 @@ Files are to big to share via GitHub.
 Here are the links to the used pretrained models:
 - efficientdet_d2: http://download.tensorflow.org/models/object_detection/tf2/20200711/efficientdet_d2_coco17_tpu-32.tar.gz
 - ssd_resnet101_640: http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet101_v1_fpn_640x640_coco17_tpu-8.tar.gz
+- centernet_hourglass104_512: http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_resnet101_v1_fpn_640x640_coco17_tpu-8.tar.gz

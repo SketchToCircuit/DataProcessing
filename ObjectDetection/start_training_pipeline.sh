@@ -1,4 +1,4 @@
 #!/bin/bash
-export MODEL_NAME=ssd_resnet101_640
-export MODEL_VERSION=v21
+export MODEL_NAME=centernet_hourglass104_512
+export MODEL_VERSION=v2
 screen -Sdmc train-object-detector train.screenrc

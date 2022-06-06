@@ -32,14 +32,14 @@ from combined_model import CombinedModel
 hyperparameters = {
     'pin_peak_thresh': 0.2,
     'pin_val_weight': 0.4,
-    'box_final_thresh': 0.7,
+    'box_final_thresh': 0.75,
     'box_overlap_thresh': 0.7,
     'box_iou_weight': 0.3,
     'box_certainty_cluster_count': 0.8,
     'box_certainty_combined_scores': 0.5
 }
 
-model = CombinedModel('./ObjectDetection/exported_models/ssd_resnet101_640_v21/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
+model = CombinedModel('./ObjectDetection/exported_models/centernet_hourglass104_512_v2/saved_model', './PinDetection/exported/2', hyperparameters=hyperparameters)
 
 signature = {tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY : model.__call__.get_concrete_function(tf.TensorSpec((None), dtype=tf.string))}
 tf.saved_model.save(model, './CompleteModel/Exported/1', signature)
